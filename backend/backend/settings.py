@@ -17,26 +17,8 @@ SECRET_KEY = 'django-insecure-+3^mv^$ebq#@g4@zqtv#nan$v_o%!z81r*jqc-3ip=#r5&rrh-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["http://52.91.68.90", "http://localhost:8000", "http://localhost:3000"]
+ALLOWED_HOSTS = ["http://52.91.68.90", "http://localhost:8000", "http://localhost:3000", "52.91.68.90"]
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:8000",
-    "http://52.91.68.90",
-    "https://exploreden.vercel.app",
-    "https://exploreden.com.au"
-]
-
-CORS_ALLOW_CREDENTIALS = True
-
-CORS_ALLOWED_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
 
 OTP_EXPIRATION_TIME = 10
 
