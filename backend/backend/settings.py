@@ -17,7 +17,15 @@ SECRET_KEY = 'django-insecure-+3^mv^$ebq#@g4@zqtv#nan$v_o%!z81r*jqc-3ip=#r5&rrh-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["http://52.91.68.90", "http://localhost:8000", "http://localhost:3000"]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://localhost:3000/google",
+    "http://52.91.68.90"
+
+]    
     
 OTP_EXPIRATION_TIME = 10
 
