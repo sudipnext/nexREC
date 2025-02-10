@@ -19,6 +19,13 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["54.172.171.231", "http://localhost:8000", "http://localhost:3000", "54.172.171.231"]
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8000",
+    "http://localhost:3000",
+    "http://54.172.171.231",
+    # Add more as needed
+]
+
 
 OTP_EXPIRATION_TIME = 10
 
