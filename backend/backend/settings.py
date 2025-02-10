@@ -22,11 +22,22 @@ ALLOWED_HOSTS = ["http://52.91.68.90", "http://localhost:8000", "http://localhos
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:8000",
-    "http://localhost:3000/google",
-    "http://52.91.68.90"
+    "http://52.91.68.90",
+    "https://exploreden.vercel.app",
+    "https://exploreden.com.au"
+]
 
-]    
-    
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
 OTP_EXPIRATION_TIME = 10
 
 # Application definition
@@ -153,7 +164,6 @@ USE_TZ = True
 # Static Files Configuration
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
 # Enable WhiteNoise for static file serving
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
@@ -195,17 +205,17 @@ AUTHENTICATION_BACKENDS = (
 DJOSER = {
     'LOGIN_FIELD': 'email',
     'USER_CREATE_PASSWORD_RETYPE': False,
-    # 'USERNAME_CHANGED_EMAIL_CONFIRMATION': True,
-    # 'PASSWORD_CHANGED_EMAIL_CONFIRMATION': True,
     'SEND_CONFIRMATION_EMAIL': False,
     'SET_USERNAME_RETYPE': False,
     'SET_PASSWORD_RETYPE': False,
-    # 'PASSWORD_RESET_CONFIRM_URL': 'password/reset/confirm/{uid}/{token}',
-    # 'USERNAME_RESET_CONFIRM_URL': 'email/reset/confirm/{uid}/{token}',
-    # 'ACTIVATION_URL': 'activate/{uid}/{token}',
-    # 'SEND_ACTIVATION_EMAIL': False,
-    # 'SOCIAL_AUTH_TOKEN_STRATEGY': 'authapp.token.SimpleTokenStrategy',
-    'SOCIAL_AUTH_ALLOWED_REDIRECT_URIS': ['http://localhost:3000', 'http://localhost:8000', 'http://localhost:3000/oauth/google/callback', 'http://localhost:3000/google', 'https://exploreden.vercel.app/google', 'https://exploreden.vercel.app/google/callback', 'https://exploreden.vercel.app', 'http://exploreden.vercel.app', 'http://exploreden.vercel.app/google', 'http://exploreden.vercel.app/google/callback', 'https://exploreden.com.au/oauth/google/callback', 'http://exploreden.com.au/oauth/google/callback'],
+    'SOCIAL_AUTH_ALLOWED_REDIRECT_URIS': [
+        'http://localhost:3000',
+        'http://localhost:8000',
+        'https://exploreden.vercel.app',
+        'http://exploreden.vercel.app',
+        'https://exploreden.com.au',
+        'http://exploreden.com.au'
+    ],
     'SERIALIZERS': {
         'user_create': 'authapp.serializers.UserCreateSerializer',
         'user': 'authapp.serializers.UserCreateSerializer',
