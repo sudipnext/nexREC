@@ -31,11 +31,7 @@ urlpatterns = [
     re_path(r'^auth/', include('djoser.urls.authtoken')),
     path('auth/', include('djoser.social.urls')),
     path('auth/users/', include('authapp.urls')),
-]
-
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 admin.site.site_header = "Movie Recommendation Admin"
 admin.site.site_title = "Movie Recommendation Admin Portal"
