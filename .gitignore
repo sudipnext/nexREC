@@ -3,3 +3,11 @@ node_modules
 /.cache
 /build
 .env
+
+backend/data/
+backend/data/.env
+backend/authapp/__pycache__
+backend/core/__pycache__
+backend/db.sqlite3
+
+/env

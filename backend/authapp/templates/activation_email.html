@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activate Your Movie Recommendation Account</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .logo {
+            max-width: 150px;
+            height: auto;
+            margin-bottom: 15px;
+        }
+        h1 {
+            color: #2c3e50;
+            font-size: 24px;
+            margin: 0;
+            padding: 0;
+        }
+        .content {
+            padding: 20px 0;
+        }
+        .otp-container {
+            background-color: #f8f9fa;
+            border: 2px dashed #4CAF50;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .otp-code {
+            font-size: 32px;
+            font-weight: bold;
+            letter-spacing: 8px;
+            color: #2c3e50;
+            margin: 10px 0;
+        }
+        .expiry-warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px 15px;
+            margin: 20px 0;
+            font-size: 14px;
+            color: #856404;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+            font-size: 12px;
+            color: #666;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        @media only screen and (max-width: 600px) {
+            .container {
+                margin: 10px;
+                padding: 15px;
+            }
+            .otp-code {
+                font-size: 24px;
+                letter-spacing: 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <!-- Add your logo here -->
+            <!-- <img src="logo.png" alt="ExploreDen Logo" class="logo"> -->
+            <h1>Welcome to Movie Recommendation!</h1>
+        </div>
+        
+        <div class="content">
+            <p>Hello {{ user.username }},</p>
+            <p>Thank you for joining Movie Recommendation! We're excited to have you on board. To start exploring amazing movies, please activate your account using the OTP code below:</p>
+            
+            <div class="otp-container">
+                <p>Your Activation Code</p>
+                <div class="otp-code">{{ otp }}</div>
+                <p>Enter this code in the app to activate your account</p>
+            </div>
+
+            <div class="expiry-warning">
+                ⚠️ This OTP will expire in 10 minutes for security purposes.
+            </div>
+
+            <p>If you didn't create an account with Movie Recommendation, please ignore this email or contact our support team if you have concerns.</p>
+        </div>
+
+        <div class="footer">
+            <p>This is an automated message, please do not reply to this email.</p>
+                <p>© {% now "Y" %} Movie Recommendation. All rights reserved.</p>
+            <p>
+                Need help? Contact us at <a href="mailto:support@pbgnpl.com">support@pbgnpl.com</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
