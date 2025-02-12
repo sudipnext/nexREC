@@ -46,6 +46,10 @@ class MovieViewSet(viewsets.ModelViewSet):
     def search(self, request):
         title = request.query_params.get('title', '')
         movies = Movie.objects.filter(title__icontains=title)
+        page = self.paginate_queryset(movies)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(movies, many=True)
         return Response(serializer.data)
 
