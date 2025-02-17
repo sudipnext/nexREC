@@ -6,7 +6,7 @@ from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
 from django.core.mail import send_mail
 import random
-from backend import settings
+from django.conf import settings
 from djoser.views import UserViewSet as DjoserUserViewSet
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
