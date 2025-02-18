@@ -41,20 +41,4 @@ jobs:
           region: us-east-1
           deployment_package: deploy.zip
           wait_for_environment_recovery: 60
-      - name: Debug AWS Secrets
-        run: |
-          if [ -z "${AWS_ACCESS_KEY_ID}" ]; then
-            echo "AWS_ACCESS_KEY_ID is NOT set!"
-          else
-            echo "AWS_ACCESS_KEY_ID is set!"
-          fi
-      
-          if [ -z "${AWS_SECRET_ACCESS_KEY}" ]; then
-            echo "AWS_SECRET_ACCESS_KEY is NOT set!"
-          else
-            echo "AWS_SECRET_ACCESS_KEY is set!"
-          fi
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
