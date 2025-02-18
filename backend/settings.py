@@ -25,9 +25,17 @@ CORS_ALLOWED_ORIGINS = [
     "http://54.172.171.231",
     "http://localhost:5173",
     "http://localhost",
-    "https://movie-recommendation-eosin.vercel.app"
+    "https://movie-recommendation-eosin.vercel.app",
+    "https://dke40cs2in8nq.cloudfront.net"
     # Add more as needed
 ]
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:8000",
+    "https://dke40cs2in8nq.cloudfront.net",
+    "http://localhost:3000",
+    "https://movie-recommendation-eosin.vercel.app"
+]
+
 
 
 OTP_EXPIRATION_TIME = 10
