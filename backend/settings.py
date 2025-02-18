@@ -24,7 +24,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://54.172.171.231",
     "http://localhost:5173",
-    "http://localhost"
+    "http://localhost",
+    "https://movie-recommendation-eosin.vercel.app"
     # Add more as needed
 ]
 
@@ -202,10 +203,7 @@ DJOSER = {
     'SOCIAL_AUTH_ALLOWED_REDIRECT_URIS': [
         'http://localhost:3000',
         'http://localhost:8000',
-        'https://exploreden.vercel.app',
-        'http://exploreden.vercel.app',
-        'https://exploreden.com.au',
-        'http://exploreden.com.au'
+        'https://movie-recommendation-eosin.vercel.app'
     ],
     'SERIALIZERS': {
         'user_create': 'authapp.serializers.UserCreateSerializer',
