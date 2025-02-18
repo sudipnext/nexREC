@@ -1,0 +1,43 @@
+name: Deploy to Elastic Beanstalk
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.11' 
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Collect static files
+        run: |
+          source venv/bin/activate
+          python manage.py collectstatic --noinput
+
+      - name: Generate deployment package
+        run: |
+          zip -r deploy.zip . -x '*.git*' 'venv/*'
+
+      - name: Deploy to EB
+        uses: einaregilsson/beanstalk-deploy@v22
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          application_name: exploredenback
+          environment_name: exploreden-new
+          version_label: ${{ github.sha }}
+          region: eu-north-1
+          deployment_package: deploy.zip
+          wait_for_environment_recovery: 60
