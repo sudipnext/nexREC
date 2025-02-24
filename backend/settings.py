@@ -244,8 +244,8 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER  # Use the same email as HOST_USER for cons
 
 
 #MILVUS CONFIGURATION
-MILVUS_HOST = os.environ.get('MILVUS_HOST')
-MILVUS_PORT = os.environ.get('MILVUS_PORT')
+MILVUS_HOST = str(os.environ.get('MILVUS_HOST'))
+MILVUS_PORT = str(os.environ.get('MILVUS_PORT', '19530'))
 
 CRONJOBS = [
     # Run every hour
