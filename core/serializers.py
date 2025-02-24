@@ -1,6 +1,5 @@
 from rest_framework import serializers
-from .models import (Profile, Movie, MovieCrew, MovieCast, ProductionCompany, 
-                    ProductionCountry, Distributor, Favorite, Rating, Comment, WatchList)
+from .models import (Profile, Movie,  Favorite, Rating, Comment, WatchList)
 
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -9,83 +8,18 @@ class ProfileSerializer(serializers.ModelSerializer):
                  'full_name', 'date_joined', 'currency']
         read_only_fields = ['user', 'user_ip']
 
-class MovieCastSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = MovieCast
-        fields = ['id', 'name', 'order']
-
-class MovieCrewSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = MovieCrew
-        fields = ['director', 'producer', 'screenwriter', 'writers',
-                 'director_of_photography', 'music_composer']
-
-class ProductionCompanySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductionCompany
-        fields = ['id', 'name']
-
-class ProductionCountrySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductionCountry
-        fields = ['id', 'name']
-
-class DistributorSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Distributor
-        fields = ['id', 'name']
-
 class MovieSerializer(serializers.ModelSerializer):
-    crew = MovieCrewSerializer(read_only=True)
-    cast_members = MovieCastSerializer(many=True, read_only=True)
-    production_companies = ProductionCompanySerializer(many=True, read_only=True)
-    production_countries = ProductionCountrySerializer(many=True, read_only=True)
-    distributors = DistributorSerializer(many=True, read_only=True)
-    
     class Meta:
         model = Movie
-        fields = [
-            # Basic Info
-            'id', 'title', 'original_title', 'tmdb_id', 'imdb_id', 'ems_id',
-            
-            # Content
-            'synopsis', 'overview',
-            
-            # Scores
-            'audience_score', 'critics_score', 'vote_average', 'vote_count',
-            'imdb_rating', 'imdb_votes',
-            
-            # Technical
-            'rating', 'runtime', 'original_language', 'spoken_languages',
-            'sound_mix',
-            
-            # Release
-            'release_date', 'release_date_theaters', 'release_date_streaming',
-            'status',
-            
-            # Financial
-            'box_office', 'revenue', 'budget',
-            
-            # Media
-            'poster_path', 'media_url',
-            
-            # Related Data
-            'crew', 'cast_members', 'production_companies',
-            'production_countries', 'distributors',
-            
-            # Timestamps
-            'created_at', 'updated_at'
-        ]
-        read_only_fields = ['created_at', 'updated_at']
+        fields = '__all__'
 
 class MovieListSerializer(serializers.ModelSerializer):
     """Simplified serializer for list views"""
     class Meta:
         model = Movie
-        fields = [
-            'id', 'title', 'poster_path', 'release_date',
-            'vote_average', 'overview'
-        ]
+        fields = ['id', 'ems_id', 'title', 'synopsis', 'director', 'rating', 
+                 'original_language', 'movie_index', 'tagline', 'genres', 
+                 'cast', 'avg_rating']
 
 class FavoriteSerializer(serializers.ModelSerializer):
     movie = MovieListSerializer(read_only=True)

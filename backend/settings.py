@@ -241,3 +241,49 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER  # Use the same email as HOST_USER for consistency
+
+
+#MILVUS CONFIGURATION
+MILVUS_HOST = os.environ.get('MILVUS_HOST')
+MILVUS_PORT = os.environ.get('MILVUS_PORT')
+
+CRONJOBS = [
+    # Run every hour
+    ('0 * * * *', 'core.tasks.update_movie_popularity_scores'),
+    
+    # Or run daily at midnight
+    # ('0 0 * * *', 'core.tasks.update_movie_popularity_scores'),
+]
+
+
+# Logging Configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'django_cron.log'),
+            'formatter': 'verbose',
+        },
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'hotelbeds': {  # This matches your app name
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}

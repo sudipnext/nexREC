@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
-
+from django.conf import settings
 UserAccount = get_user_model()
 
 
@@ -25,106 +25,43 @@ class Profile(models.Model):
         ordering = ['id']
 
 class Movie(models.Model):
-    # Basic Info
-    title = models.CharField(max_length=255)
-    original_title = models.CharField(max_length=255, blank=True)
-    tmdb_id = models.IntegerField(default=0)
-    imdb_id = models.CharField(max_length=20, blank=True)
-    ems_id = models.CharField(max_length=50, blank=True)
-    
-    # Content
+    ems_id = models.CharField(max_length=100, unique=True)
+    title = models.CharField(max_length=500)
     synopsis = models.TextField(blank=True)
+    director = models.CharField(max_length=500, blank=True)
+    producer = models.TextField(blank=True)
+    screenwriter = models.CharField(max_length=500, blank=True)
+    distributor = models.CharField(max_length=500, blank=True)
+    rating = models.CharField(max_length=500, blank=True)
+    original_language = models.CharField(max_length=500, blank=True)
+    movie_index = models.IntegerField(null=True, blank=True)
     overview = models.TextField(blank=True)
-    
-    # Scores
-    audience_score = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
-    critics_score = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
-    vote_average = models.DecimalField(max_digits=3, decimal_places=1, default=0)
-    vote_count = models.IntegerField(default=0)
-    imdb_rating = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
-    imdb_votes = models.IntegerField(null=True, blank=True)
-    
-    # Technical
-    rating = models.CharField(max_length=50, blank=True)  # e.g., "PG-13"
-    runtime = models.CharField(max_length=20, blank=True)  # e.g., "1h 37m"
-    original_language = models.CharField(max_length=50, blank=True)
-    spoken_languages = models.CharField(max_length=255, blank=True)
-    sound_mix = models.CharField(max_length=100, blank=True)
-    
-    # Release
-    release_date = models.DateField(null=True, blank=True)
-    release_date_theaters = models.CharField(max_length=100, blank=True)
-    release_date_streaming = models.CharField(max_length=100, blank=True)
-    status = models.CharField(max_length=50, blank=True)
-    
-    # Financial
-    box_office = models.CharField(max_length=50, blank=True)
-    revenue = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
-    budget = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
-    
-    # Media
-    poster_path = models.URLField(max_length=500, blank=True)
-    media_url = models.CharField(max_length=255, blank=True)
-    
-    # Timestamps
-    created_at = models.DateTimeField(auto_now_add=True)
+    tagline = models.CharField(max_length=500, blank=True)
+    genres = models.JSONField(default=list, blank=True)
+    production_companies = models.JSONField(default=list, blank=True)
+    production_countries = models.JSONField(default=list, blank=True)
+    spoken_languages = models.JSONField(default=list, blank=True)
+    cast = models.JSONField(default=list, blank=True)
+    director_of_photography = models.CharField(max_length=500, blank=True)
+    writers = models.TextField(blank=True)
+    producers = models.TextField(blank=True)
+    music_composer = models.CharField(max_length=500, blank=True)
+    avg_rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
+    posterUri = models.CharField(null=True, blank=True)
+    audienceScore = models.JSONField(default=list, null=True, blank=True)
+    criticsScore = models.JSONField(default=list, null=True, blank=True)
+    mediaUrl = models.URLField(max_length=500, blank=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ['-release_date']
+    created_at = models.DateTimeField(auto_now_add=True)
+    popularity_score = models.FloatField(default=0)
+    total_interactions = models.IntegerField(default=0)
+    weekly_views = models.IntegerField(default=0)
+    last_interaction = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.title
 
-class MovieCrew(models.Model):
-    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='crew')
-    director = models.CharField(max_length=255, blank=True)
-    producer = models.TextField(blank=True)  # Combined producer credits
-    screenwriter = models.CharField(max_length=255, blank=True)
-    writers = models.TextField(blank=True)
-    director_of_photography = models.CharField(max_length=255, blank=True)
-    music_composer = models.CharField(max_length=255, blank=True)
-    
-    def __str__(self):
-        return f"Crew for {self.movie.title}"
 
-class MovieCast(models.Model):
-    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='cast_members')
-    name = models.CharField(max_length=255)
-    order = models.IntegerField(default=0)
-    
-    class Meta:
-        ordering = ['order']
-    
-    def __str__(self):
-        return f"{self.name} in {self.movie.title}"
-
-class ProductionCompany(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-    movies = models.ManyToManyField(Movie, related_name='production_companies')
-    
-    def __str__(self):
-        return self.name
-    
-    class Meta:
-        verbose_name_plural = "Production Companies"
-
-class ProductionCountry(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-    movies = models.ManyToManyField(Movie, related_name='production_countries')
-    
-    def __str__(self):
-        return self.name
-    
-    class Meta:
-        verbose_name_plural = "Production Countries"
-
-class Distributor(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-    movies = models.ManyToManyField(Movie, related_name='distributors')
-    
-    def __str__(self):
-        return self.name
 
 class Favorite(models.Model):
     user = models.ForeignKey(UserAccount, on_delete=models.CASCADE, related_name='favorites')
@@ -186,3 +123,28 @@ class WatchList(models.Model):
     def __str__(self):
         status = "watched" if self.watched else "pending"
         return f"{self.user.email} - {self.movie.title} ({status})"
+
+class MovieInteraction(models.Model):
+    movie = models.ForeignKey('Movie', on_delete=models.CASCADE)
+    interaction_type = models.CharField(max_length=50, choices=[
+        ('SEARCH', 'Search Query'),
+        ('VIEW', 'Movie View'),
+        ('RECOMMEND', 'Recommendation Click'),
+        ('RATING', 'Rating Given'),
+        ('FAVORITE', 'Added to Favorites'),
+        ('SHARE', 'Shared Movie')
+    ])
+    user = models.ForeignKey(
+        UserAccount, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True
+    )
+    timestamp = models.DateTimeField(auto_now_add=True)
+    search_query = models.TextField(null=True, blank=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['movie', 'interaction_type', 'timestamp']),
+            models.Index(fields=['timestamp'])
+        ]
