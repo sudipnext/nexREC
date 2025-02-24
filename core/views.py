@@ -192,6 +192,10 @@ class RecommendationViewset(viewsets.GenericViewSet):
         super().__init__(*args, **kwargs)
         self.milvus_api = MilvusAPI(collection_name="movies_final")
 
+    def get_queryset(self):
+        return Movie.objects.none()
+
+
     @swagger_auto_schema(
         manual_parameters=[
             openapi.Parameter(
