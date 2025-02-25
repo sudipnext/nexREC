@@ -130,9 +130,9 @@ class MovieInteraction(models.Model):
         ('SEARCH', 'Search Query'),
         ('VIEW', 'Movie View'),
         ('RECOMMEND', 'Recommendation Click'),
-        ('RATING', 'Rating Given'),
         ('FAVORITE', 'Added to Favorites'),
-        ('SHARE', 'Shared Movie')
+        ('WATCHLIST', 'Added to Watchlist'),
+        ('WATCHED', 'Watched already'),
     ])
     user = models.ForeignKey(
         UserAccount, 
@@ -148,6 +148,11 @@ class MovieInteraction(models.Model):
             models.Index(fields=['movie', 'interaction_type', 'timestamp']),
             models.Index(fields=['timestamp'])
         ]
+
+
+
+
+
 
 
 from django.db import models

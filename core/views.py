@@ -250,8 +250,7 @@ class RecommendationViewset(viewsets.GenericViewSet):
                 'interaction_type', openapi.IN_QUERY,
                 description="Type of interaction with the movie",
                 type=openapi.TYPE_STRING,
-                enum=['SEARCH', 'VIEW', 'RECOMMEND',
-                      'RATING', 'FAVORITE', 'SHARE']
+                enum=['SEARCH', 'VIEW', 'RECOMMEND','FAVORITE', 'WATCHLIST', 'WATCHED']
             ),
             openapi.Parameter(
                 'search_query', openapi.IN_QUERY,
