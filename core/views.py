@@ -266,7 +266,7 @@ class RecommendationViewset(viewsets.GenericViewSet):
     def track_interaction(self, request, pk=None):
         """Track user interaction with a movie"""
         movie = get_object_or_404(Movie, id=pk)
-        interaction_type = request.data.get('type', 'VIEW')
+        interaction_type = request.data.get('interaction_type', 'VIEW')
         search_query = request.data.get('search_query', "")
 
         MovieInteraction.objects.create(
