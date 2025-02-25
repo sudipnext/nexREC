@@ -275,7 +275,6 @@ class RecommendationViewset(viewsets.GenericViewSet):
             user=request.user if request.user.is_authenticated else None,
             search_query=search_query
         )
-
         # Update movie's popularity score
         movie.popularity_score = PopularityCalculator.calculate_popularity(
             movie.id)
