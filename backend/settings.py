@@ -252,6 +252,7 @@ MILVUS_PORT = str(os.environ.get('MILVUS_PORT', '19530'))
 CRONJOBS = [
     # Run every hour
     ('0 * * * *', 'core.tasks.update_movie_popularity_scores'),
+    ('* * * * *', 'core.tasks.test_hello_every_minute'),
     
     # Or run daily at midnight
     # ('0 0 * * *', 'core.tasks.update_movie_popularity_scores'),

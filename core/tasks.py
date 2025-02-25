@@ -1,11 +1,7 @@
 from core.services.popularity import PopularityCalculator
 from core.utils import DatabaseLogger
-import logging
 
-db_logger = DatabaseLogger()
-
-# Setup logging
-logger = logging.getLogger(__name__)
+logger = DatabaseLogger()
 
 
 def update_movie_popularity_scores():
@@ -15,3 +11,8 @@ def update_movie_popularity_scores():
         logger.info("Successfully updated movie popularity scores")
     except Exception as e:
         logger.error(f"Error updating movie popularity scores: {str(e)}")
+
+
+def test_hello_every_minute():
+    """Test cron job"""
+    logger.log('INFO', 'Hello, every minute!', 'test_hello_every_minute')

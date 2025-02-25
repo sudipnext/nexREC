@@ -148,3 +148,28 @@ class MovieInteraction(models.Model):
             models.Index(fields=['movie', 'interaction_type', 'timestamp']),
             models.Index(fields=['timestamp'])
         ]
+
+
+from django.db import models
+    
+class Logs(models.Model):
+    LEVEL_CHOICES = [
+        ('INFO', 'Info'),
+        ('ERROR', 'Error'),
+        ('WARNING', 'Warning'),
+        ('SUCCESS', 'Success'),
+    ]
+
+    timestamp = models.DateTimeField(auto_now_add=True)
+    level = models.CharField(max_length=10, choices=LEVEL_CHOICES)
+    message = models.TextField()
+    task_name = models.CharField(max_length=100)
+    traceback = models.TextField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Log'
+        verbose_name_plural = 'Logs'
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.timestamp} - {self.level} - {self.task_name}"
