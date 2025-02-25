@@ -1,8 +1,14 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 from .models import (
-    Profile, Movie, Favorite, Rating, Comment, WatchList
+    Profile, Movie, Favorite, Rating, Comment, WatchList, Logs
 )
+
+@admin.register(Logs)
+class LogsAdmin(ModelAdmin):
+    list_display = ('level', 'message', 'task_name')
+    search_fields = ('level', 'message', 'task_name')
+    list_filter = ('level', 'timestamp')
 
 @admin.register(Profile)
 class ProfileAdmin(ModelAdmin):
