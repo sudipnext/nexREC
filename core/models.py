@@ -127,7 +127,6 @@ class WatchList(models.Model):
 class MovieInteraction(models.Model):
     movie = models.ForeignKey('Movie', on_delete=models.CASCADE)
     interaction_type = models.CharField(max_length=50, choices=[
-        ('SEARCH', 'Search Query'),
         ('VIEW', 'Movie View'),
         ('RECOMMEND', 'Recommendation Click'),
         ('FAVORITE', 'Added to Favorites'),

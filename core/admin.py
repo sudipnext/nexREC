@@ -1,8 +1,15 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 from .models import (
-    Profile, Movie, Favorite, Rating, Comment, WatchList, Logs
+    Profile, Movie, Favorite, Rating, Comment, WatchList, Logs, MovieInteraction
 )
+
+
+@admin.register(MovieInteraction)
+class MovieInteractionAdmin(ModelAdmin):
+    list_display = ('movie', 'interaction_type', 'user', 'timestamp')
+    search_fields = ('movie__title', 'interaction_type', 'user__email')
+    list_filter = ('interaction_type', 'timestamp')
 
 @admin.register(Logs)
 class LogsAdmin(ModelAdmin):
@@ -19,7 +26,7 @@ class ProfileAdmin(ModelAdmin):
 
 @admin.register(Movie)
 class MovieAdmin(ModelAdmin):
-    list_display = ('title', 'avg_rating', 'created_at')
+    list_display = ('title', 'avg_rating', 'popularity_score', 'created_at')
     search_fields = ('title', 'overview')
     list_filter = ('avg_rating', 'created_at')
     readonly_fields = ('created_at', 'updated_at')

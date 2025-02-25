@@ -6,12 +6,11 @@ from ..models import Movie, MovieInteraction
 
 class PopularityCalculator:
     INTERACTION_WEIGHTS = {
-        'SEARCH': 1,
-        'VIEW': 2,
+        'VIEW': 1,
         'RECOMMEND': 3,
-        'RATING': 4,
         'FAVORITE': 5,
-        'SHARE': 3
+        'WATCHLIST': 5,
+        'WATCHED': 4,
     }
     
     TIME_DECAY_FACTOR = 0.5  # Higher means faster decay
