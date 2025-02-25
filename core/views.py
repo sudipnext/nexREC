@@ -9,13 +9,13 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from .models import Profile, Movie, Favorite, Rating, Comment, WatchList
 from .serializers import (ProfileSerializer, MovieSerializer, FavoriteSerializer,
-                          RatingSerializer, CommentSerializer, WatchListSerializer)
+                          RatingSerializer, CommentSerializer, WatchListSerializer, UserPreferenceSerializer)
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from .pagination_custom import CustomPagination
 from .services.popularity import PopularityCalculator
 from django.db.models import F
-from .models import MovieInteraction
+from .models import MovieInteraction, UserPreference
 
 # Create your views here.
 
@@ -283,3 +283,17 @@ class RecommendationViewset(viewsets.GenericViewSet):
         movie.save()
 
         return Response({'status': 'success'})
+
+
+class UserPreferenceViewSet(viewsets.ModelViewSet):
+    serializer_class = UserPreferenceSerializer
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Get or update user preferences",
+        responses={200: ProfileSerializer()}
+    )
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return UserPreference.objects.none()
+        return UserPreference.objects.filter(user=self.request.user)

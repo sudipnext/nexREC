@@ -9,8 +9,10 @@ UserAccount = get_user_model()
 # Create your models here.
 class Profile(models.Model):
     user = models.OneToOneField(UserAccount, on_delete=models.CASCADE)
-    profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
-    login_type = models.CharField(max_length=50, blank=True, null=True)  # e.g., 'email', 'google'
+    profile_picture = models.ImageField(
+        upload_to='profile_pictures/', null=True, blank=True)
+    login_type = models.CharField(
+        max_length=50, blank=True, null=True)  # e.g., 'email', 'google'
     dob = models.DateField(null=True, blank=True)
     phone_number = models.CharField(max_length=15, null=True, blank=True)
     full_name = models.CharField(max_length=100, null=True, blank=True)
@@ -23,6 +25,7 @@ class Profile(models.Model):
 
     class Meta:
         ordering = ['id']
+
 
 class Movie(models.Model):
     ems_id = models.CharField(max_length=100, unique=True)
@@ -46,7 +49,8 @@ class Movie(models.Model):
     writers = models.TextField(blank=True)
     producers = models.TextField(blank=True)
     music_composer = models.CharField(max_length=500, blank=True)
-    avg_rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
+    avg_rating = models.DecimalField(
+        max_digits=3, decimal_places=2, null=True, blank=True)
     posterUri = models.CharField(null=True, blank=True)
     audienceScore = models.JSONField(default=list, null=True, blank=True)
     criticsScore = models.JSONField(default=list, null=True, blank=True)
@@ -62,22 +66,26 @@ class Movie(models.Model):
         return self.title
 
 
-
 class Favorite(models.Model):
-    user = models.ForeignKey(UserAccount, on_delete=models.CASCADE, related_name='favorites')
-    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='favorited_by')
+    user = models.ForeignKey(
+        UserAccount, on_delete=models.CASCADE, related_name='favorites')
+    movie = models.ForeignKey(
+        Movie, on_delete=models.CASCADE, related_name='favorited_by')
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         unique_together = ['user', 'movie']  # Prevents duplicate favorites
         ordering = ['-created_at']
-    
+
     def __str__(self):
         return f"{self.user.email} - {self.movie.title}"
 
+
 class Rating(models.Model):
-    user = models.ForeignKey(UserAccount, on_delete=models.CASCADE, related_name='ratings')
-    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='ratings')
+    user = models.ForeignKey(
+        UserAccount, on_delete=models.CASCADE, related_name='ratings')
+    movie = models.ForeignKey(
+        Movie, on_delete=models.CASCADE, related_name='ratings')
     score = models.IntegerField(
         validators=[
             MinValueValidator(1, message="Rating must be at least 1"),
@@ -86,43 +94,52 @@ class Rating(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         unique_together = ['user', 'movie']  # One rating per user per movie
         ordering = ['-created_at']
-    
+
     def __str__(self):
         return f"{self.user.email} rated {self.movie.title}: {self.score}"
 
+
 class Comment(models.Model):
-    user = models.ForeignKey(UserAccount, on_delete=models.CASCADE, related_name='comments')
-    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='comments')
+    user = models.ForeignKey(
+        UserAccount, on_delete=models.CASCADE, related_name='comments')
+    movie = models.ForeignKey(
+        Movie, on_delete=models.CASCADE, related_name='comments')
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='replies')
-    likes = models.ManyToManyField(UserAccount, related_name='liked_comments', blank=True)
-    
+    parent = models.ForeignKey(
+        'self', null=True, blank=True, on_delete=models.CASCADE, related_name='replies')
+    likes = models.ManyToManyField(
+        UserAccount, related_name='liked_comments', blank=True)
+
     class Meta:
         ordering = ['-created_at']
-    
+
     def __str__(self):
         return f"Comment by {self.user.email} on {self.movie.title}"
 
+
 class WatchList(models.Model):
-    user = models.ForeignKey(UserAccount, on_delete=models.CASCADE, related_name='watchlist')
-    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='in_watchlists')
+    user = models.ForeignKey(
+        UserAccount, on_delete=models.CASCADE, related_name='watchlist')
+    movie = models.ForeignKey(
+        Movie, on_delete=models.CASCADE, related_name='in_watchlists')
     added_at = models.DateTimeField(auto_now_add=True)
     watched = models.BooleanField(default=False)
     watched_at = models.DateTimeField(null=True, blank=True)
-    
+
     class Meta:
         unique_together = ['user', 'movie']
         ordering = ['-added_at']
-    
+
     def __str__(self):
         status = "watched" if self.watched else "pending"
         return f"{self.user.email} - {self.movie.title} ({status})"
+
 
 class MovieInteraction(models.Model):
     movie = models.ForeignKey('Movie', on_delete=models.CASCADE)
@@ -134,14 +151,14 @@ class MovieInteraction(models.Model):
         ('WATCHED', 'Watched already'),
     ])
     user = models.ForeignKey(
-        UserAccount, 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        UserAccount,
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True
     )
     timestamp = models.DateTimeField(auto_now_add=True)
     search_query = models.TextField(null=True, blank=True)
-    
+
     class Meta:
         indexes = [
             models.Index(fields=['movie', 'interaction_type', 'timestamp']),
@@ -149,13 +166,6 @@ class MovieInteraction(models.Model):
         ]
 
 
-
-
-
-
-
-from django.db import models
-    
 class Logs(models.Model):
     LEVEL_CHOICES = [
         ('INFO', 'Info'),
@@ -177,3 +187,62 @@ class Logs(models.Model):
 
     def __str__(self):
         return f"{self.timestamp} - {self.level} - {self.task_name}"
+
+
+class UserPreference(models.Model):
+    GENDER_CHOICES = (
+        ('M', 'Male'),
+        ('F', 'Female'),
+        ('O', 'Other'),
+        ('P', 'Prefer not to say'),
+    )
+    GENRES = [
+        ('Action', 'Action'),
+        ('Adventure', 'Adventure'),
+        ('Animation', 'Animation'),
+        ('Biography', 'Biography'),
+        ('Comedy', 'Comedy'),
+        ('Crime', 'Crime'),
+        ('Documentary', 'Documentary'),
+        ('Drama', 'Drama'),
+        ('Family', 'Family'),
+        ('Fantasy', 'Fantasy'),
+        ('History', 'History'),
+        ('Horror', 'Horror'),
+        ('Music', 'Music'),
+        ('Musical', 'Musical'),
+        ('Mystery', 'Mystery'),
+        ('Romance', 'Romance'),
+        ('Sci-Fi', 'Sci-Fi'),
+        ('Sport', 'Sport'),
+        ('Thriller', 'Thriller'),
+        ('War', 'War'),
+        ('Western', 'Western'),
+    ]
+    MOVIE_WATCH_FREQUENCY = (
+        ('DAILY', 'Daily'),
+        ('WEEKLY', 'Weekly'),
+        ('OCCASIONALLY', 'Occasionally'),
+        ('FEW TIMES A MONTH', 'Few times a month'),
+        ('MONTHLY', 'Monthly'),
+        ('FEW TIMES A MONTH', 'Few times a month'),
+        ('YEARLY', 'Yearly'),
+    )
+    MOVIE_TASTE = (
+        ('AWFUL', 'Awful'),
+        ('MEH', 'Meh'),
+        ('GOOD', 'Good'),
+        ('AMAZING', 'Amazing'),
+        ('HAVENT SEEN', 'Havent seen'),
+    )
+
+    user = models.OneToOneField(UserAccount, on_delete=models.CASCADE)
+    age = models.IntegerField(null=True, blank=True)
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
+    favorite_genres = models.JSONField(default=list)
+    watch_frequency = models.CharField(
+        max_length=50, choices=MOVIE_WATCH_FREQUENCY)
+    taste = models.CharField(max_length=50, choices=MOVIE_TASTE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+

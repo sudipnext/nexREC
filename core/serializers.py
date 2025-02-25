@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import (Profile, Movie,  Favorite, Rating, Comment, WatchList)
+from .models import (Profile, Movie,  Favorite, Rating, Comment, WatchList, UserPreference)
 
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -94,3 +94,21 @@ class WatchListSerializer(serializers.ModelSerializer):
         model = WatchList
         fields = ['id', 'movie', 'movie_id', 'added_at', 'watched', 'watched_at']
         read_only_fields = ['user', 'added_at'] 
+
+
+
+class UserPreferenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserPreference
+        fields = [
+            'id', 
+            'user',
+            'age',
+            'gender',
+            'favorite_genres',
+            'watch_frequency',
+            'taste',
+            'created_at',
+            'updated_at'
+        ]
+        read_only_fields = ['user', 'created_at', 'updated_at']
