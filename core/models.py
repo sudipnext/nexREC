@@ -3,6 +3,8 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
+from django.contrib.postgres.search import SearchVectorField
+from django.contrib.postgres.indexes import GinIndex
 UserAccount = get_user_model()
 
 
@@ -61,9 +63,26 @@ class Movie(models.Model):
     total_interactions = models.IntegerField(default=0)
     weekly_views = models.IntegerField(default=0)
     last_interaction = models.DateTimeField(null=True, blank=True)
+    search_vector = SearchVectorField(null=True)
 
     def __str__(self):
         return self.title
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['title']),
+            models.Index(fields=['movie_index']),
+            models.Index(fields=['avg_rating']),
+            models.Index(fields=['popularity_score']),
+            models.Index(fields=['-created_at']),
+            # Add name to the conditional index
+            models.Index(
+                fields=['-popularity_score'],
+                name='popular_movies_idx',
+                condition=models.Q(popularity_score__gt=0)
+            ),
+            GinIndex(fields=['search_vector'], name='movie_search_vector_idx'),
+        ]
 
 
 class Favorite(models.Model):
@@ -189,6 +208,22 @@ class Logs(models.Model):
         return f"{self.timestamp} - {self.level} - {self.task_name}"
 
 
+class MovieTaste(models.Model):
+    movie = models.ForeignKey(Movie, on_delete=models.CASCADE)
+    user = models.ForeignKey(UserAccount, on_delete=models.CASCADE)
+    taste = models.CharField(max_length=50, choices=[
+        ('AWFUL', 'Awful'),
+        ('MEH', 'Meh'),
+        ('GOOD', 'Good'),
+        ('AMAZING', 'Amazing'),
+        ('HAVENT SEEN', 'Havent seen'),
+    ])
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+
+
 class UserPreference(models.Model):
     GENDER_CHOICES = (
         ('M', 'Male'),
@@ -242,7 +277,6 @@ class UserPreference(models.Model):
     favorite_genres = models.JSONField(default=list)
     watch_frequency = models.CharField(
         max_length=50, choices=MOVIE_WATCH_FREQUENCY)
-    taste = models.CharField(max_length=50, choices=MOVIE_TASTE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

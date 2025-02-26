@@ -7,15 +7,21 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from .models import Profile, Movie, Favorite, Rating, Comment, WatchList
+from .models import Profile, Movie, Favorite, Rating, Comment, WatchList, UserPreference, MovieTaste
 from .serializers import (ProfileSerializer, MovieSerializer, FavoriteSerializer,
-                          RatingSerializer, CommentSerializer, WatchListSerializer, UserPreferenceSerializer, UserPreferenceListSerializer)
+                          RatingSerializer, CommentSerializer, WatchListSerializer, UserPreferenceSerializer, UserPreferenceListSerializer, MovieTasteSerializer)
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from .pagination_custom import CustomPagination
 from .services.popularity import PopularityCalculator
 from django.db.models import F
 from .models import MovieInteraction, UserPreference
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
+from .filters import MovieFilter
+from django.db.models import Q
+from django.contrib.postgres.search import SearchQuery, SearchRank, TrigramSimilarity
+from django.db.models.functions import Greatest
 
 # Create your views here.
 
@@ -39,26 +45,105 @@ class MovieViewSet(viewsets.ModelViewSet):
     serializer_class = MovieSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     pagination_class = CustomPagination
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_class = MovieFilter
+    search_fields = ['title', 'overview', 'tagline', 'director', 'cast']
+    ordering_fields = ['title', 'avg_rating', 'popularity_score', 'created_at']
+    ordering = ['-popularity_score']  # default ordering
 
     @swagger_auto_schema(
-        operation_description="Search movies by title",
+        operation_description="Search movies by title, overview, or genres",
         manual_parameters=[
             openapi.Parameter(
                 'title', openapi.IN_QUERY,
                 description="Movie title to search for",
                 type=openapi.TYPE_STRING
-            )
+            ),
+            openapi.Parameter(
+                'genres', openapi.IN_QUERY,
+                description="Comma-separated list of genres (e.g., Action,Comedy)",
+                type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'min_rating', openapi.IN_QUERY,
+                description="Minimum average rating",
+                type=openapi.TYPE_NUMBER
+            ),
+            openapi.Parameter(
+                'max_rating', openapi.IN_QUERY,
+                description="Maximum average rating",
+                type=openapi.TYPE_NUMBER
+            ),
+            openapi.Parameter(
+                'language', openapi.IN_QUERY,
+                description="Original language",
+                type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'search', openapi.IN_QUERY,
+                description="Search in title, overview, tagline, director, and cast",
+                type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'ordering', openapi.IN_QUERY,
+                description="Order by field (prefix with - for descending)",
+                type=openapi.TYPE_STRING,
+                enum=['title', '-title', 'avg_rating', '-avg_rating', 
+                      'popularity_score', '-popularity_score']
+            ),
         ]
     )
     @action(detail=False, methods=['get'])
     def search(self, request):
-        title = request.query_params.get('title', '')
-        movies = Movie.objects.filter(title__icontains=title)
-        page = self.paginate_queryset(movies)
+        queryset = self.get_queryset()
+        search_query = request.query_params.get('search', '').strip()
+        genres = request.query_params.get('genres', '').split(',')
+        min_rating = request.query_params.get('min_rating')
+        max_rating = request.query_params.get('max_rating')
+
+        if search_query:
+            # Create full-text search query
+            search_vector = SearchQuery(search_query, config='english')
+            
+            # Combine different search methods
+            queryset = queryset.annotate(
+                rank=SearchRank('search_vector', search_vector),
+                title_similarity=TrigramSimilarity('title', search_query),
+                overview_similarity=TrigramSimilarity('overview', search_query),
+                search_score=Greatest(
+                    F('rank'),
+                    F('title_similarity'),
+                    F('overview_similarity')
+                )
+            ).filter(
+                Q(search_vector=search_vector) |
+                Q(title_similarity__gt=0.3) |
+                Q(overview_similarity__gt=0.3)
+            )
+
+        # Apply filters
+        if genres and genres[0]:
+            queryset = queryset.filter(genres__overlap=genres)
+        
+        if min_rating:
+            queryset = queryset.filter(avg_rating__gte=float(min_rating))
+        
+        if max_rating:
+            queryset = queryset.filter(avg_rating__lte=float(max_rating))
+
+        # Order by search relevance and popularity
+        if search_query:
+            queryset = queryset.order_by('-search_score', '-popularity_score')
+        else:
+            queryset = queryset.order_by('-popularity_score')
+
+        # Apply pagination
+        page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(movies, many=True)
+
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
@@ -285,26 +370,30 @@ class RecommendationViewset(viewsets.GenericViewSet):
         return Response({'status': 'success'})
 
 
-class UserPreferenceViewSet(viewsets.ViewSet):
-    """ViewSet for handling user preferences including genres, watch frequency, and taste"""
+class UserPreferenceViewSet(viewsets.ModelViewSet):
+    """ViewSet for handling user preferences"""
     serializer_class = UserPreferenceSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        return UserPreference.objects.filter(user=self.request.user)
+
     @swagger_auto_schema(
-        operation_description="Get user preferences including genres, frequency, and taste",
+        operation_description="Get user preferences",
         responses={200: UserPreferenceListSerializer}
     )
     def list(self, request):
         """Get user's preferences or return empty default if none exist"""
-        preference = UserPreference.objects.filter(user=request.user).first()
+        preference = self.get_queryset().first()
         if not preference:
             return Response({
                 "user": request.user.username,
+                "age": None,
+                "gender": None,
                 "favorite_genres": [],
                 "watch_frequency": None,
-                "taste": None,
-                "age": None,
-                "gender": None
+                "created_at": None,
+                "updated_at": None
             }, status=status.HTTP_200_OK)
         
         serializer = UserPreferenceListSerializer(preference)
@@ -319,22 +408,15 @@ class UserPreferenceViewSet(viewsets.ViewSet):
             400: "Bad Request - Invalid data"
         }
     )
-    def create(self, request):
+    def create(self, request, *args, **kwargs):
         """Create or update user preferences"""
-        preference, created = UserPreference.objects.get_or_create(
-            user=request.user
-        )
-
-        serializer = UserPreferenceSerializer(
-            preference,
+        serializer = self.get_serializer(
             data=request.data,
-            partial=True
+            context={'request': request}
         )
-
         if serializer.is_valid():
             serializer.save()
-            status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-            return Response(serializer.data, status=status_code)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @swagger_auto_schema(
@@ -350,19 +432,17 @@ class UserPreferenceViewSet(viewsets.ViewSet):
     def update_preferences(self, request):
         """Update specific preference fields"""
         try:
-            preference = UserPreference.objects.get(user=request.user)
-            serializer = UserPreferenceSerializer(
+            preference = self.get_queryset().get()
+            serializer = self.get_serializer(
                 preference,
                 data=request.data,
+                context={'request': request},
                 partial=True
             )
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)
-            return Response(
-                serializer.errors,
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except UserPreference.DoesNotExist:
             return Response(
                 {"error": "User preferences not found"},
@@ -376,10 +456,9 @@ class UserPreferenceViewSet(viewsets.ViewSet):
             404: "Not Found"
         }
     )
-    def destroy(self, request, pk=None):
-        """Delete user preferences"""
+    def destroy(self, request, *args, **kwargs):
         try:
-            preference = UserPreference.objects.get(user=request.user)
+            preference = self.get_queryset().get()
             preference.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except UserPreference.DoesNotExist:
@@ -387,3 +466,36 @@ class UserPreferenceViewSet(viewsets.ViewSet):
                 {"error": "User preferences not found"},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+    def perform_create(self, serializer):
+        """Ensure user is set when creating preferences"""
+        serializer.save(user=self.request.user)
+
+
+class MovieTasteViewSet(viewsets.ModelViewSet):
+    """ViewSet for handling movie taste preferences"""
+    serializer_class = MovieTasteSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return MovieTaste.objects.filter(user=self.request.user)
+
+    @swagger_auto_schema(
+        operation_description="Record user's taste for a movie",
+        request_body=MovieTasteSerializer
+    )
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(
+            data=request.data,
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'])
+    def my_tastes(self, request):
+        """Get all movie tastes for the current user"""
+        tastes = self.get_queryset()
+        serializer = self.get_serializer(tastes, many=True)
+        return Response(serializer.data)

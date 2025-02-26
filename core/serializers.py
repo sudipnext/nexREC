@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import (Profile, Movie,  Favorite, Rating, Comment, WatchList, UserPreference)
+from .models import (Profile, Movie,  Favorite, Rating, Comment, WatchList, UserPreference, MovieTaste)
 
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -95,21 +95,45 @@ class WatchListSerializer(serializers.ModelSerializer):
         fields = ['id', 'movie', 'movie_id', 'added_at', 'watched', 'watched_at']
         read_only_fields = ['user', 'added_at'] 
 
+class MovieTasteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MovieTaste
+        fields = ['movie', 'taste', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
 
+    def create(self, validated_data):
+        user = self.context['request'].user
+        taste, created = MovieTaste.objects.update_or_create(
+            user=user,
+            movie=validated_data['movie'],
+            defaults={'taste': validated_data['taste']}
+        )
+        return taste
 
 class UserPreferenceSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserPreference
-        fields = ['age', 'gender', 'favorite_genres', 'watch_frequency', 'taste']
+        fields = ['age', 'gender', 'favorite_genres', 'watch_frequency', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
         
     def validate_favorite_genres(self, value):
-        valid_genres = [choice[0] for choice in UserPreference.GENRES]
+        valid_genres = [genre[0] for genre in UserPreference.GENRES]
         if not all(genre in valid_genres for genre in value):
-            raise serializers.ValidationError("Invalid genre(s) provided")
+            raise serializers.ValidationError(f"Invalid genre(s). Valid genres are: {valid_genres}")
         return value
+    
+    def create(self, validated_data):
+        user = self.context['request'].user
+        preference, created = UserPreference.objects.update_or_create(
+            user=user,
+            defaults=validated_data
+        )
+        return preference
 
-class UserPreferenceListSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserPreference
-        fields = ['user', 'age', 'gender', 'favorite_genres', 'watch_frequency', 'taste']
-        read_only_fields = ['user']
+    
+
+class UserPreferenceListSerializer(UserPreferenceSerializer):
+    user = serializers.StringRelatedField()
+    
+    class Meta(UserPreferenceSerializer.Meta):
+        fields = UserPreferenceSerializer.Meta.fields + ['user']

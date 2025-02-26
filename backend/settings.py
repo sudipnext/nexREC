@@ -255,7 +255,7 @@ CRONJOBS = [
     ('* * * * *', 'core.tasks.test_hello_every_minute'),
     
     # Or run daily at midnight
-    # ('0 0 * * *', 'core.tasks.update_movie_popularity_scores'),
+    ('0 2 * * *', 'core.tasks.update_search_vectors'),
 ]
 
 
