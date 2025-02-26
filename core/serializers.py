@@ -100,15 +100,16 @@ class WatchListSerializer(serializers.ModelSerializer):
 class UserPreferenceSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserPreference
-        fields = [
-            'id', 
-            'user',
-            'age',
-            'gender',
-            'favorite_genres',
-            'watch_frequency',
-            'taste',
-            'created_at',
-            'updated_at'
-        ]
-        read_only_fields = ['user', 'created_at', 'updated_at']
+        fields = ['age', 'gender', 'favorite_genres', 'watch_frequency', 'taste']
+        
+    def validate_favorite_genres(self, value):
+        valid_genres = [choice[0] for choice in UserPreference.GENRES]
+        if not all(genre in valid_genres for genre in value):
+            raise serializers.ValidationError("Invalid genre(s) provided")
+        return value
+
+class UserPreferenceListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserPreference
+        fields = ['user', 'age', 'gender', 'favorite_genres', 'watch_frequency', 'taste']
+        read_only_fields = ['user']

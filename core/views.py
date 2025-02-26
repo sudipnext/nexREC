@@ -9,7 +9,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from .models import Profile, Movie, Favorite, Rating, Comment, WatchList
 from .serializers import (ProfileSerializer, MovieSerializer, FavoriteSerializer,
-                          RatingSerializer, CommentSerializer, WatchListSerializer, UserPreferenceSerializer)
+                          RatingSerializer, CommentSerializer, WatchListSerializer, UserPreferenceSerializer, UserPreferenceListSerializer)
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from .pagination_custom import CustomPagination
@@ -285,15 +285,105 @@ class RecommendationViewset(viewsets.GenericViewSet):
         return Response({'status': 'success'})
 
 
-class UserPreferenceViewSet(viewsets.ModelViewSet):
+class UserPreferenceViewSet(viewsets.ViewSet):
+    """ViewSet for handling user preferences including genres, watch frequency, and taste"""
     serializer_class = UserPreferenceSerializer
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
-        operation_description="Get or update user preferences",
-        responses={200: ProfileSerializer()}
+        operation_description="Get user preferences including genres, frequency, and taste",
+        responses={200: UserPreferenceListSerializer}
     )
-    def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return UserPreference.objects.none()
-        return UserPreference.objects.filter(user=self.request.user)
+    def list(self, request):
+        """Get user's preferences or return empty default if none exist"""
+        preference = UserPreference.objects.filter(user=request.user).first()
+        if not preference:
+            return Response({
+                "user": request.user.username,
+                "favorite_genres": [],
+                "watch_frequency": None,
+                "taste": None,
+                "age": None,
+                "gender": None
+            }, status=status.HTTP_200_OK)
+        
+        serializer = UserPreferenceListSerializer(preference)
+        return Response(serializer.data)
+
+    @swagger_auto_schema(
+        operation_description="Create or update user preferences",
+        request_body=UserPreferenceSerializer,
+        responses={
+            201: UserPreferenceSerializer,
+            200: UserPreferenceSerializer,
+            400: "Bad Request - Invalid data"
+        }
+    )
+    def create(self, request):
+        """Create or update user preferences"""
+        preference, created = UserPreference.objects.get_or_create(
+            user=request.user
+        )
+
+        serializer = UserPreferenceSerializer(
+            preference,
+            data=request.data,
+            partial=True
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+            status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+            return Response(serializer.data, status=status_code)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @swagger_auto_schema(
+        operation_description="Update specific preference fields",
+        request_body=UserPreferenceSerializer,
+        responses={
+            200: UserPreferenceSerializer,
+            400: "Bad Request",
+            404: "Not Found"
+        }
+    )
+    @action(detail=False, methods=['put'])
+    def update_preferences(self, request):
+        """Update specific preference fields"""
+        try:
+            preference = UserPreference.objects.get(user=request.user)
+            serializer = UserPreferenceSerializer(
+                preference,
+                data=request.data,
+                partial=True
+            )
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except UserPreference.DoesNotExist:
+            return Response(
+                {"error": "User preferences not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    @swagger_auto_schema(
+        operation_description="Delete user preferences",
+        responses={
+            204: "No Content",
+            404: "Not Found"
+        }
+    )
+    def destroy(self, request, pk=None):
+        """Delete user preferences"""
+        try:
+            preference = UserPreference.objects.get(user=request.user)
+            preference.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except UserPreference.DoesNotExist:
+            return Response(
+                {"error": "User preferences not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
