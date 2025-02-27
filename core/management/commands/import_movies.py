@@ -119,7 +119,6 @@ class Command(BaseCommand):
                             producers=row.get('producers', ''),
                             music_composer=row.get('music_composer', ''),
                             avg_rating=self.safe_decimal(row.get('avg_rating')),
-                            combined_text=row.get('combined_text', ''),
                             posterUri=row.get('posterUri', ''),
                             # Add new fields from your CSV
                             audienceScore=row.get('audienceScore'),
