@@ -149,9 +149,13 @@ class MovieViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def trending(self, request):
         """Get trending movies based on popularity score"""
-        limit = int(request.query_params.get('limit', 10))
-        movies = Movie.objects.order_by('-popularity_score')[:limit]
-        serializer = self.get_serializer(movies, many=True)
+        queryset = Movie.objects.order_by('-popularity_score')
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
 
