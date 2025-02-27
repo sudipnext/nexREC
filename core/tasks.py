@@ -16,10 +16,6 @@ def update_movie_popularity_scores():
         logger.error(f"Error updating movie popularity scores: {str(e)}")
 
 
-def test_hello_every_minute():
-    """Test cron job"""
-    logger.log('INFO', 'Hello, every minute!', 'test_hello_every_minute')
-
 
 def update_search_vectors():
     """Update search vectors for all movies"""

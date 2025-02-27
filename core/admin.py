@@ -1,9 +1,23 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 from .models import (
-    Profile, Movie, Favorite, Rating, Comment, WatchList, Logs, MovieInteraction
+    Profile, Movie, Favorite, Rating, Comment, WatchList, Logs, MovieInteraction, UserPreference, MovieTaste
 )
 
+
+@admin.register(UserPreference)
+class UserPreferenceAdmin(ModelAdmin):
+    list_display = ('user', 'age', 'gender', 'watch_frequency', 'created_at')
+    search_fields = ('user__email', 'gender', 'watch_frequency')
+    list_filter = ('gender', 'watch_frequency', 'created_at')
+    readonly_fields = ('created_at', 'updated_at')
+
+@admin.register(MovieTaste)
+class MovieTasteAdmin(ModelAdmin):
+    list_display = ('user', 'movie', 'taste', 'created_at')
+    search_fields = ('user__email', 'movie__title', 'taste')
+    list_filter = ('taste', 'created_at')
+    readonly_fields = ('created_at', 'updated_at')
 
 @admin.register(MovieInteraction)
 class MovieInteractionAdmin(ModelAdmin):
