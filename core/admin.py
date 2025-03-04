@@ -1,9 +1,15 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 from .models import (
-    Profile, Movie, Favorite, Rating, Comment, WatchList, Logs, MovieInteraction, UserPreference, MovieTaste
+    Profile, Movie, Favorite, Rating, Comment, WatchList, Logs, MovieInteraction, UserPreference, MovieTaste, UserEmbeddings
 )
 
+@admin.register(UserEmbeddings)
+class UserEmbeddingsAdmin(ModelAdmin):
+    list_display = ('user', 'last_updated', 'interaction_count', 'version')
+    search_fields = ('user__email', 'version')
+    list_filter = ('last_updated', 'version') 
+    readonly_fields = ('last_updated',)
 
 @admin.register(UserPreference)
 class UserPreferenceAdmin(ModelAdmin):

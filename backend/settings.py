@@ -288,3 +288,7 @@ LOGGING = {
         },
     },
 }
+
+
+MODEL_DIR = os.path.join(BASE_DIR, 'model')
+MODEL_PATH = os.path.join(MODEL_DIR, 'model.pth')

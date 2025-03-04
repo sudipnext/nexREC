@@ -11,7 +11,7 @@ class Command(BaseCommand):
     help = 'Import movies data from CSV file'
 
     def add_arguments(self, parser):
-        parser.add_argument('--file', type=str, default='data/dump_for_insertion.csv', 
+        parser.add_argument('--file', type=str, default='data/django_movies_without_embeddings.csv', 
                           help='Path to the CSV file')
         parser.add_argument('--clean', action='store_true', 
                           help='Clean existing data before import')

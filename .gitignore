@@ -4,3 +4,7 @@ data/
 *.csv
 GNN/
 GNN copy/
+link_regression.py
+django_backup.json
+4_scaling_gnns.py
+model/

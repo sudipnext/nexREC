@@ -5,6 +5,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
 from django.contrib.postgres.search import SearchVectorField
 from django.contrib.postgres.indexes import GinIndex
+from django.contrib.postgres.fields import ArrayField
 UserAccount = get_user_model()
 
 
@@ -21,6 +22,16 @@ class Profile(models.Model):
     user_ip = models.GenericIPAddressField(null=True, blank=True)
     date_joined = models.DateTimeField(default=timezone.now)
     currency = models.CharField(max_length=10, null=True, blank=True)
+    user_index = models.IntegerField(unique=True, null=True, blank=True)
+    mapped_user_id = models.IntegerField(unique=True, null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.mapped_user_id:
+            # Assign the next available mapped_user_id
+            last_mapped_id = Profile.objects.aggregate(max_id=models.Max('mapped_user_id'))['max_id'] or -1
+            self.mapped_user_id = last_mapped_id + 1
+        super().save(*args, **kwargs)
+
 
     def __str__(self):
         return self.full_name or "Anonymous User"
@@ -40,6 +51,7 @@ class Movie(models.Model):
     rating = models.CharField(max_length=500, blank=True)
     original_language = models.CharField(max_length=500, blank=True)
     movie_index = models.IntegerField(null=True, blank=True)
+    mapped_movie_id = models.IntegerField(unique=True, null=True, blank=True)
     overview = models.TextField(blank=True)
     tagline = models.CharField(max_length=500, blank=True)
     genres = models.JSONField(default=list, blank=True)
@@ -64,6 +76,13 @@ class Movie(models.Model):
     weekly_views = models.IntegerField(default=0)
     last_interaction = models.DateTimeField(null=True, blank=True)
     search_vector = SearchVectorField(null=True)
+    
+    def save(self, *args, **kwargs):
+        if not self.mapped_movie_id:
+            last_mapped_id = Movie.objects.aggregate(max_id=models.Max('mapped_movie_id'))['max_id'] or -1
+            self.mapped_movie_id = last_mapped_id + 1
+        super().save(*args, **kwargs)
+
 
     def __str__(self):
         return self.title
@@ -105,18 +124,29 @@ class Rating(models.Model):
         UserAccount, on_delete=models.CASCADE, related_name='ratings')
     movie = models.ForeignKey(
         Movie, on_delete=models.CASCADE, related_name='ratings')
-    score = models.IntegerField(
+    score = models.FloatField(
         validators=[
-            MinValueValidator(1, message="Rating must be at least 1"),
-            MaxValueValidator(10, message="Rating cannot exceed 10")
+            MinValueValidator(1.0, message="Rating must be at least 1"),
+            MaxValueValidator(5.0, message="Rating cannot exceed 5")  
         ]
     )
+    mapped_user_id = models.IntegerField(null=True, blank=True)  
+    mapped_movie_id = models.IntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    def save(self, *args, **kwargs):
+        # Automatically set mapped IDs from related Profile and Movie
+        self.mapped_user_id = self.user.profile.mapped_user_id
+        self.mapped_movie_id = self.movie.mapped_movie_id
+        super().save(*args, **kwargs)
+        
     class Meta:
-        unique_together = ['user', 'movie']  # One rating per user per movie
+        unique_together = ['user', 'movie']
         ordering = ['-created_at']
+        indexes = [  # Add indexes for GNN efficiency
+            models.Index(fields=['mapped_user_id']),
+            models.Index(fields=['mapped_movie_id']),
+        ]
 
     def __str__(self):
         return f"{self.user.email} rated {self.movie.title}: {self.score}"
@@ -279,4 +309,26 @@ class UserPreference(models.Model):
         max_length=50, choices=MOVIE_WATCH_FREQUENCY)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class UserEmbeddings(models.Model):
+    user = models.OneToOneField(UserAccount, on_delete=models.CASCADE, related_name='embeddings')
+    embeddings = ArrayField(
+        models.FloatField(),
+        size=384,  # or whatever your embedding size is
+        null=True
+    )
+    last_updated = models.DateTimeField(auto_now=True)
+    interaction_count = models.IntegerField(default=0)
+    version = models.CharField(max_length=50, default='1.0')
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['last_updated']),
+            models.Index(fields=['user', 'last_updated']),
+        ]
+        verbose_name_plural = 'User embeddings'
+
+    def __str__(self):
+        return f"Embeddings for {self.user.email} (Last updated: {self.last_updated})"
 

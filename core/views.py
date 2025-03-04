@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from .models import Profile, Movie, Favorite, Rating, Comment, WatchList, UserPreference, MovieTaste
+from .models import Profile, Movie, Favorite, Rating, Comment, WatchList, UserPreference, MovieTaste, UserEmbeddings
 from .serializers import (ProfileSerializer, MovieSerializer, FavoriteSerializer,
                           RatingSerializer, CommentSerializer, WatchListSerializer, UserPreferenceSerializer, UserPreferenceListSerializer, MovieTasteSerializer)
 from django.utils import timezone
@@ -22,6 +22,7 @@ from .filters import MovieFilter
 from django.db.models import Q
 from django.contrib.postgres.search import SearchQuery, SearchRank, TrigramSimilarity
 from django.db.models.functions import Greatest
+from core.predictor import EmbeddingPredictor
 
 # Create your views here.
 
@@ -52,99 +53,166 @@ class MovieViewSet(viewsets.ModelViewSet):
     ordering = ['-popularity_score']  # default ordering
 
     @swagger_auto_schema(
-        operation_description="Search movies by title, overview, or genres",
+        operation_description="Advanced movie search with hybrid capabilities",
         manual_parameters=[
             openapi.Parameter(
-                'title', openapi.IN_QUERY,
-                description="Movie title to search for",
+                'search', openapi.IN_QUERY,
+                description="Text to search in title, overview, cast, director",
                 type=openapi.TYPE_STRING
             ),
             openapi.Parameter(
                 'genres', openapi.IN_QUERY,
-                description="Comma-separated list of genres (e.g., Action,Comedy)",
-                type=openapi.TYPE_STRING
-            ),
-            openapi.Parameter(
-                'min_rating', openapi.IN_QUERY,
-                description="Minimum average rating",
-                type=openapi.TYPE_NUMBER
-            ),
-            openapi.Parameter(
-                'max_rating', openapi.IN_QUERY,
-                description="Maximum average rating",
-                type=openapi.TYPE_NUMBER
-            ),
-            openapi.Parameter(
-                'language', openapi.IN_QUERY,
-                description="Original language",
-                type=openapi.TYPE_STRING
-            ),
-            openapi.Parameter(
-                'search', openapi.IN_QUERY,
-                description="Search in title, overview, tagline, director, and cast",
-                type=openapi.TYPE_STRING
-            ),
-            openapi.Parameter(
-                'ordering', openapi.IN_QUERY,
-                description="Order by field (prefix with - for descending)",
+                description="Comma-separated list of genres",
                 type=openapi.TYPE_STRING,
-                enum=['title', '-title', 'avg_rating', '-avg_rating', 
-                      'popularity_score', '-popularity_score']
+                choices=[
+                    "Action",
+                    "Adventure",
+                    "Animation",
+                    "Biography",
+                    "Comedy",
+                    "Crime",
+                    "Documentary",
+                    "Drama",
+                    "Family",
+                    "Fantasy",
+                    "History",
+                    "Horror",
+                    "Music",
+                    "Musical",
+                    "Mystery",
+                    "Romance",
+                    "Sci-Fi",
+                    "Sport",
+                    "Thriller",
+                    "War",
+                    "Western"
+                ]
             ),
-        ]
+            openapi.Parameter(
+                'rating', openapi.IN_QUERY,
+                description="Movie rating (e.g., PG-13)",
+                type=openapi.TYPE_STRING, choices=[
+                    "G",
+                    "PG",
+                    "PG-13",
+                    "R",
+                    "NC-17",
+                    "TV-Y",
+                    "TV-Y7",
+                    "TV-Y7-FV",
+                    "TV-G",
+                    "TV-PG",
+                    "TV-14",
+                    "TV-MA"
+                ]
+
+            ),
+            openapi.Parameter(
+                'use_milvus', openapi.IN_QUERY,
+                description="Use Milvus for semantic search",
+                type=openapi.TYPE_BOOLEAN,
+                default=False
+            ),
+            openapi.Parameter(
+                'limit', openapi.IN_QUERY,
+                description="Number of results to return",
+                type=openapi.TYPE_INTEGER,
+                default=10
+            )
+        ],
+        responses={200: MovieSerializer(many=True)}
     )
     @action(detail=False, methods=['get'])
     def search(self, request):
-        queryset = self.get_queryset()
+        """Hybrid search using both PostgreSQL and Milvus"""
         search_query = request.query_params.get('search', '').strip()
         genres = request.query_params.get('genres', '').split(',')
-        min_rating = request.query_params.get('min_rating')
-        max_rating = request.query_params.get('max_rating')
+        rating = request.query_params.get('rating')
+        use_milvus = request.query_params.get(
+            'use_milvus', 'false').lower() == 'true'
+        limit = int(request.query_params.get('limit', 10))
 
-        if search_query:
-            # Create full-text search query
-            search_vector = SearchQuery(search_query, config='english')
-            
-            # Combine different search methods
-            queryset = queryset.annotate(
-                rank=SearchRank('search_vector', search_vector),
-                title_similarity=TrigramSimilarity('title', search_query),
-                overview_similarity=TrigramSimilarity('overview', search_query),
-                search_score=Greatest(
-                    F('rank'),
-                    F('title_similarity'),
-                    F('overview_similarity')
+        try:
+            if use_milvus:
+                # Use Milvus for semantic search
+                milvus_api = MilvusAPI(collection_name="movies")
+                filters = {}
+                if rating:
+                    filters['rating'] = rating
+                if genres and genres[0]:
+                    filters['genres'] = genres[0]
+
+                results = milvus_api.text_search(
+                    query=search_query,
+                    limit=limit,
+                    filters=filters,
+                    output_fields=['movie_index', 'title', 'rating', 'genres']
                 )
-            ).filter(
-                Q(search_vector=search_vector) |
-                Q(title_similarity__gt=0.3) |
-                Q(overview_similarity__gt=0.3)
+                # Convert string results to dictionaries
+                movie_data = []
+                for result in results:
+                    if isinstance(result, str):
+                        # Clean up and evaluate the string to dict
+                        result = eval(result.replace("'", '"'))
+                    movie_data.append(result)
+
+                # Extract movie indices
+                movie_indices = [movie['movie_index'] for movie in movie_data]
+                
+                # Get movies from database in same order as Milvus results
+                movie_map = {m.movie_index: m for m in Movie.objects.filter(movie_index__in=movie_indices)}
+                queryset = [movie_map[idx] for idx in movie_indices if idx in movie_map]
+
+            else:
+                # Use PostgreSQL full-text search
+                queryset = self.get_queryset()
+
+                if search_query:
+                    search_vector = SearchQuery(search_query, config='english')
+                    queryset = queryset.annotate(
+                        rank=SearchRank('search_vector', search_vector),
+                        title_similarity=TrigramSimilarity(
+                            'title', search_query),
+                        overview_similarity=TrigramSimilarity(
+                            'overview', search_query),
+                        search_score=Greatest(
+                            F('rank'),
+                            F('title_similarity'),
+                            F('overview_similarity')
+                        )
+                    ).filter(
+                        Q(search_vector=search_vector) |
+                        Q(title_similarity__gt=0.3) |
+                        Q(overview_similarity__gt=0.3)
+                    )
+
+                # Apply filters
+                if genres and genres[0]:
+                    queryset = queryset.filter(genres__overlap=genres)
+                if rating:
+                    queryset = queryset.filter(rating=rating)
+
+                # Order results
+                if search_query:
+                    queryset = queryset.order_by(
+                        '-search_score', '-popularity_score')
+                else:
+                    queryset = queryset.order_by('-popularity_score')
+
+            # Apply pagination
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+
+            serializer = self.get_serializer(queryset[:limit], many=True)
+            return Response(serializer.data)
+
+        except Exception as e:
+            return Response(
+                {"error": f"Search failed: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-        # Apply filters
-        if genres and genres[0]:
-            queryset = queryset.filter(genres__overlap=genres)
-        
-        if min_rating:
-            queryset = queryset.filter(avg_rating__gte=float(min_rating))
-        
-        if max_rating:
-            queryset = queryset.filter(avg_rating__lte=float(max_rating))
-
-        # Order by search relevance and popularity
-        if search_query:
-            queryset = queryset.order_by('-search_score', '-popularity_score')
-        else:
-            queryset = queryset.order_by('-popularity_score')
-
-        # Apply pagination
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
     def trending(self, request):
@@ -154,7 +222,7 @@ class MovieViewSet(viewsets.ModelViewSet):
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        
+
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -284,7 +352,6 @@ class RecommendationViewset(viewsets.GenericViewSet):
     def get_queryset(self):
         return Movie.objects.none()
 
-
     @swagger_auto_schema(
         manual_parameters=[
             openapi.Parameter(
@@ -339,7 +406,7 @@ class RecommendationViewset(viewsets.GenericViewSet):
                 'interaction_type', openapi.IN_QUERY,
                 description="Type of interaction with the movie",
                 type=openapi.TYPE_STRING,
-                enum=['VIEW', 'RECOMMEND','FAVORITE', 'WATCHLIST', 'WATCHED']
+                enum=['VIEW', 'RECOMMEND', 'FAVORITE', 'WATCHLIST', 'WATCHED']
             ),
             openapi.Parameter(
                 'search_query', openapi.IN_QUERY,
@@ -373,13 +440,149 @@ class RecommendationViewset(viewsets.GenericViewSet):
 
         return Response({'status': 'success'})
 
+    @swagger_auto_schema(
+        operation_description="Get movie recommendations for the current user",
+        manual_parameters=[
+            openapi.Parameter(
+                'no_of_recommendations', openapi.IN_QUERY,
+                description="Number of recommendations to return",
+                type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(
+                'page_size', openapi.IN_QUERY,
+                description="Size of the page",
+                type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(
+                'page', openapi.IN_QUERY,
+                description="Page number",
+                type=openapi.TYPE_INTEGER
+            )
+        ],
+        responses={200: MovieSerializer(many=True)}
+    )
+    @action(detail=False, methods=['get'])
+    def get_recommendation_for_user(self, request):
+        no_of_recommendations = int(request.query_params.get('limit', 5))
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 10))
+        user = request.user
+        if not user.is_authenticated:
+            return Response(
+                {"error": "User not authenticated"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        predictor = EmbeddingPredictor()
+        user_embedding = UserEmbeddings.objects.get(user=user).embedding
+        recommendations = predictor.predict_for_embedding(
+            user_embedding=user_embedding, no_movies=no_of_recommendations)
+        recommended_movies = []
+        for movie_id, rating in recommendations:
+            movie_details = predictor.get_movie_details(movie_id)
+            (f"Movie ID: {movie_id}, Mapped ID: {movie_details['mappedMovieId']}, "
+             f"Predicted Rating: {rating:.2f}")
+            movie = Movie.objects.get(movie_index=movie_id)
+            recommended_movies.append(movie)
+
+        serializer = self.get_serializer(recommended_movies, many=True)
+        return Response(serializer.data)
+
+    @swagger_auto_schema(
+        operation_description="Get movie recommendations for the current user",
+        manual_parameters=[
+            openapi.Parameter(
+                'limit', openapi.IN_QUERY,
+                description="Number of recommendations to return",
+                type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(
+                'page', openapi.IN_QUERY,
+                description="Page number",
+                type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(
+                'page_size', openapi.IN_QUERY,
+                description="Size of the page",
+                type=openapi.TYPE_INTEGER
+            )
+        ],
+        responses={200: MovieSerializer(many=True)}
+    )
+    @action(detail=False, methods=['get'])
+    def get_recommendation_for_user(self, request):
+        """Get personalized movie recommendations for the authenticated user"""
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "User not authenticated"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        try:
+            # Get pagination parameters
+            # Get more recommendations than needed
+            limit = int(request.query_params.get('limit', 20))
+            page = int(request.query_params.get('page', 1))
+            page_size = int(request.query_params.get('page_size', 10))
+
+            # Get user embeddings and predictions
+            predictor = EmbeddingPredictor()
+            user_embedding = UserEmbeddings.objects.get(
+                user=request.user).embedding
+            recommendations = predictor.predict_for_embedding(
+                user_embedding=user_embedding,
+                no_movies=limit
+            )
+
+            # Convert recommendations to Movie objects
+            recommended_movies = []
+            for movie_id, rating in recommendations:
+                try:
+                    movie = Movie.objects.get(movie_index=movie_id)
+                    # Optionally add the predicted rating to the movie object
+                    movie.predicted_rating = round(float(rating), 2)
+                    recommended_movies.append(movie)
+                except Movie.DoesNotExist:
+                    continue
+
+            # Calculate pagination indices
+            start_idx = (page - 1) * page_size
+            end_idx = start_idx + page_size
+
+            # Get paginated subset
+            paginated_movies = recommended_movies[start_idx:end_idx]
+
+            # Use the paginator
+            paginator = self.paginator
+            if paginator is not None:
+                paginated_movies = paginator.paginate_queryset(
+                    paginated_movies, request)
+                serializer = self.get_serializer(paginated_movies, many=True)
+                return paginator.get_paginated_response(serializer.data)
+
+            # Fallback if no paginator
+            serializer = self.get_serializer(paginated_movies, many=True)
+            return Response(serializer.data)
+
+        except UserEmbeddings.DoesNotExist:
+            return Response(
+                {"error": "User embeddings not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to get recommendations: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 class UserPreferenceViewSet(viewsets.ModelViewSet):
-    """ViewSet for handling user preferences"""
     serializer_class = UserPreferenceSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        # Check if this is a schema request
+        if getattr(self, 'swagger_fake_view', False):
+            return UserPreference.objects.none()
         return UserPreference.objects.filter(user=self.request.user)
 
     @swagger_auto_schema(
@@ -399,7 +602,7 @@ class UserPreferenceViewSet(viewsets.ModelViewSet):
                 "created_at": None,
                 "updated_at": None
             }, status=status.HTTP_200_OK)
-        
+
         serializer = UserPreferenceListSerializer(preference)
         return Response(serializer.data)
 
@@ -475,13 +678,41 @@ class UserPreferenceViewSet(viewsets.ModelViewSet):
         """Ensure user is set when creating preferences"""
         serializer.save(user=self.request.user)
 
+    @swagger_auto_schema(
+        operation_description="List user preferences",
+        responses={
+            200: UserPreferenceSerializer(many=True),
+            401: "Unauthorized",
+            403: "Forbidden"
+        },
+        security=[{"Bearer": []}]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Create user preference",
+        request_body=UserPreferenceSerializer,
+        responses={
+            201: UserPreferenceSerializer,
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden"
+        },
+        security=[{"Bearer": []}]
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
 
 class MovieTasteViewSet(viewsets.ModelViewSet):
-    """ViewSet for handling movie taste preferences"""
     serializer_class = MovieTasteSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        # Check if this is a schema request
+        if getattr(self, 'swagger_fake_view', False):
+            return MovieTaste.objects.none()
         return MovieTaste.objects.filter(user=self.request.user)
 
     @swagger_auto_schema(
@@ -503,3 +734,29 @@ class MovieTasteViewSet(viewsets.ModelViewSet):
         tastes = self.get_queryset()
         serializer = self.get_serializer(tastes, many=True)
         return Response(serializer.data)
+
+    @swagger_auto_schema(
+        operation_description="List movie tastes",
+        responses={
+            200: MovieTasteSerializer(many=True),
+            401: "Unauthorized",
+            403: "Forbidden"
+        },
+        security=[{"Bearer": []}]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(
+        operation_description="Create movie taste",
+        request_body=MovieTasteSerializer,
+        responses={
+            201: MovieTasteSerializer,
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden"
+        },
+        security=[{"Bearer": []}]
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)

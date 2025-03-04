@@ -18,3 +18,4 @@ class DatabaseLogger:
     @staticmethod
     def get_logs():
         return Logs.objects.all()
+    
