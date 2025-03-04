@@ -440,74 +440,148 @@ class RecommendationViewset(viewsets.GenericViewSet):
 
         return Response({'status': 'success'})
 
-    @swagger_auto_schema(
-        operation_description="Get movie recommendations for the current user",
-        manual_parameters=[
-            openapi.Parameter(
-                'no_of_recommendations', openapi.IN_QUERY,
-                description="Number of recommendations to return",
-                type=openapi.TYPE_INTEGER
-            ),
-            openapi.Parameter(
-                'page_size', openapi.IN_QUERY,
-                description="Size of the page",
-                type=openapi.TYPE_INTEGER
-            ),
-            openapi.Parameter(
-                'page', openapi.IN_QUERY,
-                description="Page number",
-                type=openapi.TYPE_INTEGER
-            )
-        ],
-        responses={200: MovieSerializer(many=True)}
-    )
-    @action(detail=False, methods=['get'])
-    def get_recommendation_for_user(self, request):
-        no_of_recommendations = int(request.query_params.get('limit', 5))
-        page = int(request.query_params.get('page', 1))
-        page_size = int(request.query_params.get('page_size', 10))
-        user = request.user
-        if not user.is_authenticated:
-            return Response(
-                {"error": "User not authenticated"},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        predictor = EmbeddingPredictor()
-        user_embedding = UserEmbeddings.objects.get(user=user).embedding
-        recommendations = predictor.predict_for_embedding(
-            user_embedding=user_embedding, no_movies=no_of_recommendations)
-        recommended_movies = []
-        for movie_id, rating in recommendations:
-            movie_details = predictor.get_movie_details(movie_id)
-            (f"Movie ID: {movie_id}, Mapped ID: {movie_details['mappedMovieId']}, "
-             f"Predicted Rating: {rating:.2f}")
-            movie = Movie.objects.get(movie_index=movie_id)
-            recommended_movies.append(movie)
+    # @swagger_auto_schema(
+    #     operation_description="Get movie recommendations for the current user",
+    #     manual_parameters=[
+    #         openapi.Parameter(
+    #             'no_of_recommendations', openapi.IN_QUERY,
+    #             description="Number of recommendations to return",
+    #             type=openapi.TYPE_INTEGER
+    #         ),
+    #         openapi.Parameter(
+    #             'page_size', openapi.IN_QUERY,
+    #             description="Size of the page",
+    #             type=openapi.TYPE_INTEGER
+    #         ),
+    #         openapi.Parameter(
+    #             'page', openapi.IN_QUERY,
+    #             description="Page number",
+    #             type=openapi.TYPE_INTEGER
+    #         )
+    #     ],
+    #     responses={200: MovieSerializer(many=True)}
+    # )
+    # @action(detail=False, methods=['get'])
+    # def get_recommendation_for_user(self, request):
+    #     no_of_recommendations = int(request.query_params.get('limit', 5))
+    #     page = int(request.query_params.get('page', 1))
+    #     page_size = int(request.query_params.get('page_size', 10))
+    #     user = request.user
+    #     if not user.is_authenticated:
+    #         return Response(
+    #             {"error": "User not authenticated"},
+    #             status=status.HTTP_401_UNAUTHORIZED
+    #         )
+    #     predictor = EmbeddingPredictor()
+    #     user_embedding = UserEmbeddings.objects.get(user=user).embedding
+    #     recommendations = predictor.predict_for_embedding(
+    #         user_embedding=user_embedding, no_movies=no_of_recommendations)
+    #     recommended_movies = []
+    #     for movie_id, rating in recommendations:
+    #         movie_details = predictor.get_movie_details(movie_id)
+    #         (f"Movie ID: {movie_id}, Mapped ID: {movie_details['mappedMovieId']}, "
+    #          f"Predicted Rating: {rating:.2f}")
+    #         movie = Movie.objects.get(movie_index=movie_id)
+    #         recommended_movies.append(movie)
 
-        serializer = self.get_serializer(recommended_movies, many=True)
-        return Response(serializer.data)
+    #     serializer = self.get_serializer(recommended_movies, many=True)
+    #     return Response(serializer.data)
 
-    @swagger_auto_schema(
-        operation_description="Get movie recommendations for the current user",
-        manual_parameters=[
-            openapi.Parameter(
-                'limit', openapi.IN_QUERY,
-                description="Number of recommendations to return",
-                type=openapi.TYPE_INTEGER
-            ),
-            openapi.Parameter(
-                'page', openapi.IN_QUERY,
-                description="Page number",
-                type=openapi.TYPE_INTEGER
-            ),
-            openapi.Parameter(
-                'page_size', openapi.IN_QUERY,
-                description="Size of the page",
-                type=openapi.TYPE_INTEGER
-            )
-        ],
-        responses={200: MovieSerializer(many=True)}
-    )
+    # @swagger_auto_schema(
+    #     operation_description="Get movie recommendations for the current user",
+    #     manual_parameters=[
+    #         openapi.Parameter(
+    #             'limit', openapi.IN_QUERY,
+    #             description="Number of recommendations to return",
+    #             type=openapi.TYPE_INTEGER
+    #         ),
+    #         openapi.Parameter(
+    #             'page', openapi.IN_QUERY,
+    #             description="Page number",
+    #             type=openapi.TYPE_INTEGER
+    #         ),
+    #         openapi.Parameter(
+    #             'page_size', openapi.IN_QUERY,
+    #             description="Size of the page",
+    #             type=openapi.TYPE_INTEGER
+    #         )
+    #     ],
+    #     responses={200: MovieSerializer(many=True)}
+    # )
+    # @action(detail=False, methods=['get'])
+    # def get_recommendation_for_user(self, request):
+    #     """Get personalized movie recommendations for the authenticated user"""
+    #     if not request.user.is_authenticated:
+    #         return Response(
+    #             {"error": "User not authenticated"},
+    #             status=status.HTTP_401_UNAUTHORIZED
+    #         )
+
+    #     try:
+    #         # Get pagination parameters
+    #         # Get more recommendations than needed
+    #         limit = int(request.query_params.get('limit', 20))
+    #         page = int(request.query_params.get('page', 1))
+    #         page_size = int(request.query_params.get('page_size', 10))
+
+    #         # Get user embeddings and predictions
+    #         predictor = EmbeddingPredictor()
+    #         user_embeddings = UserEmbeddings.objects.get(
+    #             user=request.user)
+    #         if user_embeddings.embeddings is None:
+    #             return Response(
+    #                 {"error": "User embeddings not initialized"},
+    #                 status=status.HTTP_404_NOT_FOUND
+    #             )
+            
+    #         # Ensure embedding is a list of floats
+    #         embedding_array = [float(x) for x in user_embeddings.embeddings]
+            
+    #         recommendations = predictor.predict_for_embedding(
+    #             user_embedding=embedding_array,
+    #             num_recommendations=limit
+    #         )
+
+    #         # Convert recommendations to Movie objects
+    #         recommended_movies = []
+    #         for movie_id, rating in recommendations:
+    #             try:
+    #                 movie = Movie.objects.get(movie_index=movie_id)
+    #                 # Optionally add the predicted rating to the movie object
+    #                 movie.predicted_rating = round(float(rating), 2)
+    #                 recommended_movies.append(movie)
+    #             except Movie.DoesNotExist:
+    #                 continue
+
+    #         # Calculate pagination indices
+    #         start_idx = (page - 1) * page_size
+    #         end_idx = start_idx + page_size
+
+    #         # Get paginated subset
+    #         paginated_movies = recommended_movies[start_idx:end_idx]
+
+    #         # Use the paginator
+    #         paginator = self.paginator
+    #         if paginator is not None:
+    #             paginated_movies = paginator.paginate_queryset(
+    #                 paginated_movies, request)
+    #             serializer = self.get_serializer(paginated_movies, many=True)
+    #             return paginator.get_paginated_response(serializer.data)
+
+    #         # Fallback if no paginator
+    #         serializer = self.get_serializer(paginated_movies, many=True)
+    #         return Response(serializer.data)
+
+    #     except UserEmbeddings.DoesNotExist:
+    #         return Response(
+    #             {"error": "User embeddings not found"},
+    #             status=status.HTTP_404_NOT_FOUND
+    #         )
+    #     except Exception as e:
+    #         return Response(
+    #             {"error": f"Failed to get recommendations: {str(e)}"},
+    #             status=status.HTTP_500_INTERNAL_SERVER_ERROR
+    #         )
     @action(detail=False, methods=['get'])
     def get_recommendation_for_user(self, request):
         """Get personalized movie recommendations for the authenticated user"""
@@ -519,55 +593,63 @@ class RecommendationViewset(viewsets.GenericViewSet):
 
         try:
             # Get pagination parameters
-            # Get more recommendations than needed
             limit = int(request.query_params.get('limit', 20))
             page = int(request.query_params.get('page', 1))
             page_size = int(request.query_params.get('page_size', 10))
 
-            # Get user embeddings and predictions
-            predictor = EmbeddingPredictor()
-            user_embedding = UserEmbeddings.objects.get(
-                user=request.user).embedding
-            recommendations = predictor.predict_for_embedding(
-                user_embedding=user_embedding,
-                no_movies=limit
-            )
+            # Get user embeddings
+            try:
+                user_embeddings = UserEmbeddings.objects.get(user=request.user)
+                if user_embeddings.embeddings is None:
+                    return Response(
+                        {"error": "User embeddings not initialized"},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                
+                # Convert embedding to list of floats
+                if isinstance(user_embeddings.embeddings, str):
+                    import json
+                    embedding_array = json.loads(user_embeddings.embeddings)
+                else:
+                    embedding_array = user_embeddings.embeddings
+                
+                # Initialize predictor and get recommendations
+                predictor = EmbeddingPredictor()
+                recommendations = predictor.predict_for_embedding(
+                    user_embedding=embedding_array,
+                    num_recommendations=limit
+                )
 
-            # Convert recommendations to Movie objects
-            recommended_movies = []
-            for movie_id, rating in recommendations:
-                try:
-                    movie = Movie.objects.get(movie_index=movie_id)
-                    # Optionally add the predicted rating to the movie object
-                    movie.predicted_rating = round(float(rating), 2)
-                    recommended_movies.append(movie)
-                except Movie.DoesNotExist:
-                    continue
+                if not recommendations:
+                    return Response(
+                        {"error": "No recommendations found"},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
 
-            # Calculate pagination indices
-            start_idx = (page - 1) * page_size
-            end_idx = start_idx + page_size
+                # Convert recommendations to Movie objects
+                recommended_movies = []
+                for movie_id, rating in recommendations:
+                    try:
+                        movie = Movie.objects.get(movie_index=movie_id)
+                        movie.predicted_rating = round(float(rating), 2)
+                        recommended_movies.append(movie)
+                    except Movie.DoesNotExist:
+                        continue
 
-            # Get paginated subset
-            paginated_movies = recommended_movies[start_idx:end_idx]
+                # Apply pagination
+                start_idx = (page - 1) * page_size
+                end_idx = start_idx + page_size
+                paginated_movies = recommended_movies[start_idx:end_idx]
 
-            # Use the paginator
-            paginator = self.paginator
-            if paginator is not None:
-                paginated_movies = paginator.paginate_queryset(
-                    paginated_movies, request)
                 serializer = self.get_serializer(paginated_movies, many=True)
-                return paginator.get_paginated_response(serializer.data)
+                return Response(serializer.data)
 
-            # Fallback if no paginator
-            serializer = self.get_serializer(paginated_movies, many=True)
-            return Response(serializer.data)
+            except UserEmbeddings.DoesNotExist:
+                return Response(
+                    {"error": "User embeddings not found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
 
-        except UserEmbeddings.DoesNotExist:
-            return Response(
-                {"error": "User embeddings not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
         except Exception as e:
             return Response(
                 {"error": f"Failed to get recommendations: {str(e)}"},
