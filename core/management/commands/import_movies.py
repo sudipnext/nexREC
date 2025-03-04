@@ -11,7 +11,7 @@ class Command(BaseCommand):
     help = 'Import movies data from CSV file'
 
     def add_arguments(self, parser):
-        parser.add_argument('--file', type=str, default='data/django_movies_without_embeddings.csv', 
+        parser.add_argument('--file', type=str, default='data/django_movies_with_poster.csv', 
                           help='Path to the CSV file')
         parser.add_argument('--clean', action='store_true', 
                           help='Clean existing data before import')
@@ -120,10 +120,10 @@ class Command(BaseCommand):
                             music_composer=row.get('music_composer', ''),
                             avg_rating=self.safe_decimal(row.get('avg_rating')),
                             posterUri=row.get('posterUri', ''),
+                            mediaUrl=row.get('posterUri', ''),
                             # Add new fields from your CSV
                             audienceScore=row.get('audienceScore'),
                             criticsScore=row.get('criticsScore'),
-                            mediaUrl=row.get('mediaUrl', '')
                         )
                         movies_to_create.append(movie)
 

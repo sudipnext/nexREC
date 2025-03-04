@@ -22,16 +22,7 @@ class Profile(models.Model):
     user_ip = models.GenericIPAddressField(null=True, blank=True)
     date_joined = models.DateTimeField(default=timezone.now)
     currency = models.CharField(max_length=10, null=True, blank=True)
-    user_index = models.IntegerField(unique=True, null=True, blank=True)
-    mapped_user_id = models.IntegerField(unique=True, null=True, blank=True)
-
-    def save(self, *args, **kwargs):
-        if not self.mapped_user_id:
-            # Assign the next available mapped_user_id
-            last_mapped_id = Profile.objects.aggregate(max_id=models.Max('mapped_user_id'))['max_id'] or -1
-            self.mapped_user_id = last_mapped_id + 1
-        super().save(*args, **kwargs)
-
+    
 
     def __str__(self):
         return self.full_name or "Anonymous User"
@@ -130,23 +121,15 @@ class Rating(models.Model):
             MaxValueValidator(5.0, message="Rating cannot exceed 5")  
         ]
     )
-    mapped_user_id = models.IntegerField(null=True, blank=True)  
-    mapped_movie_id = models.IntegerField(null=True, blank=True)
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    def save(self, *args, **kwargs):
-        # Automatically set mapped IDs from related Profile and Movie
-        self.mapped_user_id = self.user.profile.mapped_user_id
-        self.mapped_movie_id = self.movie.mapped_movie_id
-        super().save(*args, **kwargs)
+    
         
     class Meta:
         unique_together = ['user', 'movie']
         ordering = ['-created_at']
-        indexes = [  # Add indexes for GNN efficiency
-            models.Index(fields=['mapped_user_id']),
-            models.Index(fields=['mapped_movie_id']),
-        ]
+        
 
     def __str__(self):
         return f"{self.user.email} rated {self.movie.title}: {self.score}"
