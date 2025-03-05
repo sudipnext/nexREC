@@ -27,7 +27,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost",
     "https://movie-recommendation-eosin.vercel.app",
     "https://dke40cs2in8nq.cloudfront.net",
-    "https://d2448fnikplodi.cloudfront.net"
+    "https://d2448fnikplodi.cloudfront.net",
+    "https://sudipnext-movie-recommender.hf.space",
     # Add more as needed
 ]
 CSRF_TRUSTED_ORIGINS = [
@@ -35,7 +36,8 @@ CSRF_TRUSTED_ORIGINS = [
     "https://dke40cs2in8nq.cloudfront.net",
     "http://localhost:3000",
     "https://movie-recommendation-eosin.vercel.app",
-    "https://d2448fnikplodi.cloudfront.net"
+    "https://d2448fnikplodi.cloudfront.net",
+    "https://sudipnext-movie-recommender.hf.space"
 ]
 
 
