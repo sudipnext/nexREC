@@ -14,6 +14,9 @@ from .models import (
 )
 from core.utils import DatabaseLogger
 from .sentence_transformer_wrapper import SentenceTransformerWrapper
+from django.db import models
+from django.db.models import Avg
+
 
 logger = DatabaseLogger()
 
@@ -51,12 +54,13 @@ def update_avg_rating(instance):
 def update_movie_rating(sender, instance, **kwargs):
     """Update movie's average rating when a rating is created or modified"""
     movie = instance.movie
-    avg_rating = Rating.objects.filter(movie=movie).aggregate(Avg('score'))['score__avg']
+    new_avg = movie.update_average_rating()
     
-    # Add avg_rating field to Movie model if you want to store it
-    if hasattr(movie, 'avg_rating'):
-        movie.avg_rating = round(avg_rating, 2) if avg_rating else 0
-        movie.save(update_fields=['avg_rating'])
+    logger.log(
+        'INFO', 
+        f"Updated average rating for movie {movie.id} to {new_avg}",
+        'update_movie_rating'
+    )
 
 @receiver(post_delete, sender=Rating)
 def update_movie_rating_on_delete(sender, instance, **kwargs):

@@ -74,6 +74,25 @@ class Movie(models.Model):
             self.mapped_movie_id = last_mapped_id + 1
         super().save(*args, **kwargs)
 
+    def update_average_rating(self):
+        """Update the average rating for this movie"""
+        avg = self.ratings.aggregate(
+            avg_score=models.Avg('score')
+        )['avg_score']
+        
+        self.avg_rating = round(float(avg), 2) if avg is not None else 0
+        self.save(update_fields=['avg_rating'])
+        return self.avg_rating
+
+    def get_rating_stats(self):
+        """Get rating statistics for this movie"""
+        stats = self.ratings.aggregate(
+            avg=models.Avg('score'),
+            count=models.Count('id'),
+            min=models.Min('score'),
+            max=models.Max('score')
+        )
+        return stats
 
     def __str__(self):
         return self.title
