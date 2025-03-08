@@ -5,7 +5,7 @@ from authapp.models import UserAccount
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Avg
 from .geolocationip import get_client_ip, get_location_from_ip
-from core.services.sentence_transformer_embeddings_generator import SentenceTransformerEmbeddingsGenerator
+from core.sentence_transformer_wrapper import SentenceTransformerWrapper
 from core.milvus_wrapper import MilvusAPI
 from django.db.models import Avg, Count
 from .models import (
@@ -13,6 +13,7 @@ from .models import (
     MovieInteraction, MovieTaste, Comment, UserEmbeddings
 )
 from core.utils import DatabaseLogger
+from .sentence_transformer_wrapper import SentenceTransformerWrapper
 
 logger = DatabaseLogger()
 
@@ -107,72 +108,63 @@ def collect_user_interactions(user):
 
 from django.utils import timezone
 
-
 @receiver(post_save, sender=UserPreference)
 def update_user_preference(sender, instance, created, **kwargs):
-    """Update user preference and generate embeddings based on all user interactions"""
+    """Update user preference and generate embeddings instantly when preferences change"""
     user = instance.user
     
-    # Get or create user embeddings
-    user_embeddings, created_embedding = UserEmbeddings.objects.get_or_create(user=user)
-    
-    # Check if update is needed (e.g., if it's been more than an hour since last update)
-    if not created and not created_embedding:
-        time_since_update = timezone.now() - user_embeddings.last_updated
-        if time_since_update.total_seconds() < 3600:  # 1 hour in seconds
-            return  # Skip update if embeddings are recent
-    
-    # Collect all user interactions
-    user_data = collect_user_interactions(user)
-    
-    # Get interaction counts for comparison
-    current_interaction_count = (
-        user_data['stats']['total_ratings'] +
-        user_data['stats']['total_favorites'] +
-        user_data['stats']['total_watchlist']
-    )
-    
-    # Skip update if no new interactions and not a new preference
-    if not created and current_interaction_count == user_embeddings.interaction_count:
-        logger.log('INFO', f"No new interactions for user {user.id}", 'update_user_preference')
-        return
-    
-    # Initialize your embedding generators
-    embeddings_generator = SentenceTransformerEmbeddingsGenerator()
-    interaction_text = []
-    
-    # Add user preferences
-    if user_data['preferences']:
-        interaction_text.append(f"Age: {user_data['preferences']['age']}")
-        interaction_text.append(f"Gender: {user_data['preferences']['gender']}")
-        interaction_text.append(f"Favorite Genres: {', '.join(user_data['preferences']['favorite_genres'])}")
-        interaction_text.append(f"Watch Frequency: {user_data['preferences']['watch_frequency']}")
-    
-    # Add ratings information
-    for rating in user_data['ratings']:
-        interaction_text.append(f"Rated movie {rating['movie_id']} with score {rating['score']}")
-    
-    # Add movie tastes
-    for taste in user_data['movie_tastes']:
-        interaction_text.append(f"Found movie {taste['movie_id']} {taste['taste'].lower()}")
-    
-    # Add watchlist information
-    for watch in user_data['watchlist']:
-        status = "watched" if watch['watched'] else "wants to watch"
-        interaction_text.append(f"{status} movie {watch['movie_id']}")
-    
-    # Create embedding from the complete interaction text
-    combined_text = " ".join(interaction_text)
-    embeddings = embeddings_generator.generate_embeddings([combined_text])
-    embeddings = embeddings[0].tolist()
-
-    # Update user embeddings with new data
-    user_embeddings.embeddings = embeddings
-    user_embeddings.interaction_count = current_interaction_count
-    user_embeddings.last_updated = timezone.now()
-    user_embeddings.save()
-
-    # Log the update
-    logger.log('INFO', f"Updated user embeddings for user {user.id}", 'update_user_preference')
-
+    try:
+        # Collect user interactions
+        user_data = collect_user_interactions(user)
+        
+        # Build interaction text
+        interaction_text = []
+        
+        # Add user preferences
+        if user_data['preferences']:
+            interaction_text.append(f"Age: {user_data['preferences']['age']}")
+            interaction_text.append(f"Gender: {user_data['preferences']['gender']}")
+            interaction_text.append(f"Favorite Genres: {', '.join(user_data['preferences']['favorite_genres'])}")
+            interaction_text.append(f"Watch Frequency: {user_data['preferences']['watch_frequency']}")
+        
+        # Add ratings
+        for rating in user_data['ratings']:
+            interaction_text.append(f"Rated movie {rating['movie_id']} with score {rating['score']}")
+        
+        # Add movie tastes
+        for taste in user_data['movie_tastes']:
+            interaction_text.append(f"Found movie {taste['movie_id']} {taste['taste'].lower()}")
+        
+        # Add watchlist
+        for watch in user_data['watchlist']:
+            status = "watched" if watch['watched'] else "wants to watch"
+            interaction_text.append(f"{status} movie {watch['movie_id']}")
+        
+        # Create combined text and get embeddings
+        combined_text = " ".join(interaction_text)
+        transformer = SentenceTransformerWrapper()
+        embeddings = transformer.get_embedding(combined_text)
+        
+        if embeddings is not None:
+            # Try to get existing embeddings, create if doesn't exist
+            user_embeddings, created = UserEmbeddings.objects.get_or_create(
+                user=user,
+                defaults={
+                    'embeddings': embeddings["embedding"],
+                    'last_updated': timezone.now()
+                }
+            )
+            
+            if not created:
+                # Update existing embeddings
+                user_embeddings.embeddings = embeddings["embedding"]
+                user_embeddings.last_updated = timezone.now()
+                user_embeddings.save()
+            
+            logger.log('INFO', f"{'Created' if created else 'Updated'} embeddings for user {user.id}", 'update_user_preference')
+        else:
+            logger.log('ERROR', f"Failed to generate embeddings for user {user.id}", 'update_user_preference')
+            
+    except Exception as e:
+        logger.log('ERROR', f"Error updating user embeddings: {str(e)}", 'update_user_preference')
 

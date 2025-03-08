@@ -22,7 +22,6 @@ from .filters import MovieFilter
 from django.db.models import Q
 from django.contrib.postgres.search import SearchQuery, SearchRank, TrigramSimilarity
 from django.db.models.functions import Greatest
-from predictor import EmbeddingPredictor
 from core.flask_wrapper import FlaskAPIWrapper
 
 # Create your views here.
